@@ -1,0 +1,64 @@
+# ─────────────────────────────────────────────────────────────
+# xhs-content-insight - Repository Root .gitignore
+# 不提交本地运行时数据、虚拟环境与依赖目录
+# ─────────────────────────────────────────────────────────────
+
+# ---- 环境变量与本地配置 ----
+.env
+.env.local
+.env.*.local
+*.env
+
+# ---- 本地数据(合规红线:仅本仓库 data/ 目录,且不入版本库)----
+data/insight.db
+data/insight.db-journal
+data/insight.db-shm
+data/insight.db-wal
+data/json/*
+# 保留 data/json/ 目录结构(占位文件)
+!data/json/.gitkeep
+
+# ---- 后端:Python ----
+backend/.venv/
+backend/venv/
+backend/.python-version
+backend/__pycache__/
+backend/**/__pycache__/
+backend/**/*.pyc
+backend/**/*.pyo
+backend/**/*.pyd
+backend/.pytest_cache/
+backend/.mypy_cache/
+backend/.ruff_cache/
+backend/.coverage
+backend/htmlcov/
+backend/dist/
+backend/build/
+backend/*.egg-info/
+
+# ---- 前端:Node ----
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+frontend/.vite/
+frontend/coverage/
+frontend/.turbo/
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+frontend/pnpm-debug.log*
+
+# ---- 通用 ----
+*.log
+*.tmp
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# ---- 编辑器与 IDE ----
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+*.code-workspace

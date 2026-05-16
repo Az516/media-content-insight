@@ -1,0 +1,47 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "xhs-content-insight-backend"
+version = "0.1.0"
+description = "Backend for xhs-content-insight: a local, single-user, research-only Xiaohongshu content insight MVP."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+authors = [{ name = "xhs-content-insight" }]
+
+# 仅供学习研究使用,严禁用于自动化营销 / 批量发布 / 商业用途。
+# 详见仓库根目录 docs/compliance.md。
+dependencies = [
+    "fastapi==0.115.6",
+    "uvicorn[standard]==0.32.1",
+    "pydantic>=2.9,<3",
+    "pydantic-settings>=2.6,<3",
+    "sqlalchemy>=2.0.36,<3",
+    "aiosqlite==0.20.0",
+    "httpx==0.27.2",
+    "python-dotenv==1.0.1",
+    "openai==1.55.3",
+]
+
+[project.optional-dependencies]
+# google-generativeai 仅在使用 Gemini Provider 时按需安装。
+gemini = [
+    "google-generativeai==0.8.3",
+]
+test = [
+    "pytest==8.3.4",
+    "pytest-asyncio==0.24.0",
+    "hypothesis==6.122.3",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*"]
+exclude = ["tests*"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+addopts = "-ra"

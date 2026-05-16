@@ -1,0 +1,53 @@
+# ─────────────────────────────────────────────────────────────
+# xhs-content-insight - 本地开发环境(可选)
+#
+# 用途:在本机一键启动后端 FastAPI 与前端 Vite dev server
+# 合规:所有端口均仅绑定到 127.0.0.1,禁止暴露到 0.0.0.0
+# 注意:本文件在后端/前端真正落地代码后才能 `docker compose up` 运行,
+#      当前 (任务 1.1) 仅占位仓库结构。
+# ─────────────────────────────────────────────────────────────
+
+services:
+  backend:
+    image: python:3.11-slim
+    container_name: xhs-insight-backend
+    working_dir: /app
+    # 仅绑定到本机 loopback,禁止外网访问(需求 20.1 / 19.11)
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - ./backend:/app
+      - ./third_party:/third_party:ro
+      - ./data:/data
+    environment:
+      - HOST=127.0.0.1
+      - PORT=8000
+      - MEDIA_CRAWLER_ROOT=/third_party/MediaCrawler
+      - JSON_ARCHIVE_DIR=/data/json
+    # 启动前先安装依赖,再以 127.0.0.1 监听启动 uvicorn
+    command: >
+      sh -c "pip install --no-cache-dir -e . &&
+             uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload"
+    restart: unless-stopped
+
+  frontend:
+    image: node:20-alpine
+    container_name: xhs-insight-frontend
+    working_dir: /app
+    # 仅绑定到本机 loopback
+    ports:
+      - "127.0.0.1:5173:5173"
+    volumes:
+      - ./frontend:/app
+    environment:
+      - VITE_API_BASE_URL=http://127.0.0.1:8000/api
+    # 启动前先安装依赖,再以 127.0.0.1 监听启动 dev server
+    command: >
+      sh -c "npm install &&
+             npm run dev -- --host 127.0.0.1 --port 5173"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+# 不声明顶层 volumes,所有持久化数据通过 bind mount 写入仓库 ./data 目录,
+# 满足需求 20.2(仅写入仓库 data/ 目录)。

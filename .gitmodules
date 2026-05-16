@@ -1,0 +1,9 @@
+[submodule "third_party/MediaCrawler"]
+	path = third_party/MediaCrawler
+	url = https://github.com/NanmiCoder/MediaCrawler.git
+	# 固定 commit SHA 指针。子模块仅可通过更新此 SHA 升级,严禁直接修改 third_party/MediaCrawler/ 下的任何文件。
+	# 升级流程:
+	#   1) cd third_party/MediaCrawler && git fetch && git checkout <new-sha>
+	#   2) cd ../.. && 同步更新下面的 pinned-commit 注释
+	#   3) git add .gitmodules third_party/MediaCrawler && git commit -m "chore: bump MediaCrawler to <new-sha>"
+	# pinned-commit = f328ee35b55e25e8aaeb9c847fe8b622e3f3447f
