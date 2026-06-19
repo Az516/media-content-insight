@@ -66,30 +66,52 @@ export function NoteCard({ note, onClick }: NoteCardProps): JSX.Element {
       type="button"
       data-testid="note-card"
       onClick={handleClick}
-      className="group flex w-full flex-col rounded-lg border border-slate-200 bg-white p-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400"
+      className="group flex w-full flex-col overflow-hidden rounded-2xl border border-rule bg-white/80 text-left shadow-lift transition hover:-translate-y-0.5 hover:shadow-paper focus:outline-none focus-visible:ring-2 focus-visible:ring-claret-400 focus-visible:ring-offset-2"
     >
-      <img
-        src={coverSrc}
-        alt={trimmedTitle ? trimmedTitle : '笔记封面'}
-        loading="lazy"
-        className="aspect-square w-full rounded-md bg-slate-100 object-cover"
-        onError={(event) => {
-          // 防止占位图本身触发 error 时形成无限回退循环。
-          const img = event.currentTarget;
-          img.onerror = null;
-          img.src = PLACEHOLDER_COVER_DATA_URI;
-        }}
-      />
-      <h3
-        title={displayTitle}
-        className="mt-2 line-clamp-2 text-sm font-medium text-slate-800"
-      >
-        {displayTitle}
-      </h3>
-      <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-500">
-        <span aria-label="点赞数">❤ {formatCount(note.liked_count)}</span>
-        <span aria-label="收藏数">⭐ {formatCount(note.collected_count)}</span>
-        <span aria-label="评论数">💬 {formatCount(note.comment_count)}</span>
+      <div className="relative overflow-hidden bg-paper-100">
+        <img
+          src={coverSrc}
+          alt={trimmedTitle ? trimmedTitle : '笔记封面'}
+          loading="lazy"
+          className="aspect-[4/5] w-full object-cover transition duration-500 group-hover:scale-[1.03]"
+          onError={(event) => {
+            const img = event.currentTarget;
+            img.onerror = null;
+            img.src = PLACEHOLDER_COVER_DATA_URI;
+          }}
+        />
+        {note.type === 'video' && (
+          <span className="absolute left-2.5 top-2.5 inline-flex items-center gap-1 rounded-full bg-ink-900/85 px-2 py-0.5 text-[10px] font-medium text-paper-50 backdrop-blur">
+            ▶ video
+          </span>
+        )}
+      </div>
+      <div className="space-y-2.5 p-4">
+        <h3
+          title={displayTitle}
+          className="line-clamp-2 font-display text-[15px] font-medium leading-snug tracking-tightish text-ink-900"
+        >
+          {displayTitle}
+        </h3>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[11px] tabular-nums text-ink-500">
+          <span aria-label="点赞数" className="inline-flex items-center gap-1">
+            <span className="text-claret-500">♥</span>
+            {formatCount(note.liked_count)}
+          </span>
+          <span aria-label="收藏数" className="inline-flex items-center gap-1">
+            <span className="text-ink-700">✦</span>
+            {formatCount(note.collected_count)}
+          </span>
+          <span aria-label="评论数" className="inline-flex items-center gap-1">
+            <span className="text-ink-700">¶</span>
+            {formatCount(note.comment_count)}
+          </span>
+        </div>
+        {note.author?.nickname && (
+          <div className="truncate border-t border-rule pt-2 text-[11px] text-ink-400">
+            by {note.author.nickname}
+          </div>
+        )}
       </div>
     </button>
   );

@@ -255,6 +255,35 @@ class CrawlerService:
             )
             raise CrawlerError("media_crawler_not_ready")
 
+        # MediaCrawler sqlite backend stores rows in
+        # ``<mc_root>/database/sqlite_tables.db``. Bootstrap schema on
+        # first use so crawl runs do not fail on an empty database file.
+        sqlite_db = mc_root / "database" / "sqlite_tables.db"
+        if (not sqlite_db.exists()) or sqlite_db.stat().st_size == 0:
+            init_cmd = [self.mc_python, "main.py", "--init_db", "sqlite"]
+            logger.info(
+                "initialize MediaCrawler sqlite schema",
+                extra={
+                    "event": "mc_init_sqlite",
+                    "cmd": init_cmd,
+                    "cwd": str(mc_root),
+                },
+            )
+            init_proc = await asyncio.create_subprocess_exec(
+                *init_cmd,
+                cwd=str(mc_root),
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            init_stdout, init_stderr = await init_proc.communicate()
+            if init_proc.returncode != 0:
+                init_tail = (init_stderr or b"").decode(
+                    "utf-8", errors="ignore"
+                )[-_STDERR_MAX_CHARS:]
+                raise CrawlerError(
+                    "unexpected: media_crawler_init_db_failed: " + init_tail
+                )
+
         # ---- 2) Build & spawn ---------------------------------------
         cmd: list[str] = [
             self.mc_python,
@@ -262,10 +291,15 @@ class CrawlerService:
             "--platform", "xhs",
             "--type", "search",
             "--keywords", keyword,
-            "--save_data_option", "db",
+            # MediaCrawler "db" means MySQL. We need local SQLite output
+            # for the backend readback path, so force "sqlite" here.
+            "--save_data_option", "sqlite",
             "--get_comment", "yes",
             "--get_sub_comment", "yes",
-            "--max_notes", str(max_notes),
+            # Keep crawl latency bounded so the task can reach a
+            # terminal state quickly in local-dev runs.
+            "--max_comments_count_singlenotes", "5",
+            "--max_concurrency_num", "2",
         ]
         logger.info(
             "spawn MediaCrawler subprocess",
@@ -328,11 +362,8 @@ class CrawlerService:
             raise
 
         # ---- 4) Hand off to the next stage (tasks 3.2 / 3.3) --------
-        # The directory MediaCrawler writes its own SQLite / JSON
-        # output into is fixed by its CLI to ``<cwd>/data/xhs``. We
-        # surface it here so callers in tasks 3.2 / 3.3 can read it
-        # without hard-coding the layout in two places.
-        raw_dir = mc_root / "data" / "xhs"
+        # MediaCrawler sqlite output resides in ``<cwd>/database``.
+        raw_dir = mc_root / "database"
 
         logger.info(
             "MediaCrawler subprocess finished",
@@ -859,10 +890,22 @@ def _classify_subprocess_failure_inline(
     stderr_text = (outcome.stderr_bytes or b"").decode(
         "utf-8", errors="ignore"
     )
-    stderr_excerpt = stderr_text[:_STDERR_MAX_CHARS]
+    # Keep the tail instead of the head: MediaCrawler prints a lot of
+    # progress logs first and the actionable traceback near the end.
+    stderr_excerpt = stderr_text[-_STDERR_MAX_CHARS:]
     lowered_full = stderr_text.lower()
 
-    if _LOGIN_TOKEN in lowered_full:
+    # Avoid false positives from benign log lines like "check login state"
+    # while still catching real unauthenticated states.
+    login_markers = (
+        "login state result: false",
+        "please login",
+        "login required",
+        "cookie expired",
+        "未登录",
+        "登录失效",
+    )
+    if any(marker in lowered_full for marker in login_markers):
         # Requirement 8.1: stderr containing ``"login"`` (case-insensitive)
         # is unambiguously a stale cookie / expired session.
         raise LoginExpiredError(stderr_excerpt)

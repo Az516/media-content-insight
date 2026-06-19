@@ -1,10 +1,24 @@
 <!doctype html>
 <html lang="zh-CN">
   <head>
+    <script>
+      (function () {
+        var stored = localStorage.getItem('xhs-theme');
+        var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var dark = stored === 'dark' || (!stored && prefersDark);
+        if (dark) document.documentElement.classList.add('dark');
+      })();
+    </script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="小红书内容洞察 MVP - 仅供学习研究和小规模数据分析" />
-    <title>小红书内容洞察</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,400..900,0..100&family=Noto+Serif+SC:wght@500;700&family=Noto+Sans+SC:wght@300;400;500;700&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <title>xhs · 内容洞察实验室</title>
   </head>
   <body>
     <div id="root"></div>

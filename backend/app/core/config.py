@@ -62,6 +62,7 @@ class Settings(BaseSettings):
     # ---- Crawl behaviour ----
     CRAWL_TIMEOUT_SECONDS: int = Field(default=600, ge=1)
     HOT_COMMENT_TOP_N: int = Field(default=5, ge=1, le=20)
+    MOCK_CRAWLER: bool = Field(default=False)
 
     # ---- AI provider ----
     AI_PROVIDER: str = Field(default="openai")

@@ -23,19 +23,6 @@ export interface CommentTreeProps {
 }
 
 /**
- * 渲染单条评论的元数据行 `like_count赞 · create_time`,
- * 仅展示非 null / 非 undefined 的字段。
- */
-function formatMeta(comment: Comment): string {
-  const parts: string[] = [];
-  parts.push(`${comment.like_count ?? 0}赞`);
-  if (comment.create_time) {
-    parts.push(comment.create_time);
-  }
-  return parts.join(' · ');
-}
-
-/**
  * 单条评论的视觉容器,一级 / 二级评论共用。
  *
  * `is_top_hot` 为真时:
@@ -45,26 +32,37 @@ function formatMeta(comment: Comment): string {
 function CommentRow({ comment }: { comment: Comment }): JSX.Element {
   const isHot = Boolean(comment.is_top_hot);
   const containerClass = isHot
-    ? 'rounded-md border border-amber-200 bg-amber-50 p-3'
-    : 'rounded-md p-3';
+    ? 'relative rounded-xl border border-claret-100 bg-claret-50/60 p-4'
+    : 'rounded-xl border border-rule bg-white/50 p-4';
 
   return (
     <div className={containerClass} data-testid="comment-row">
-      <div className="flex items-center text-sm font-medium text-slate-800">
-        <span>{comment.nickname || '匿名'}</span>
+      {isHot && (
+        <span
+          aria-hidden
+          className="absolute -left-0.5 top-3 h-6 w-[3px] rounded-r bg-claret-500"
+        />
+      )}
+      <div className="flex items-center gap-2 text-sm">
+        <span className="font-medium text-ink-900">
+          {comment.nickname || '匿名'}
+        </span>
         {isHot && (
           <span
             data-testid="hot-badge"
-            className="ml-2 inline-block px-2 py-0.5 text-xs rounded-full bg-amber-200 text-amber-900"
+            className="inline-flex items-center rounded-full bg-claret-500 px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider text-paper-50"
           >
-            热门
+            hot
           </span>
         )}
       </div>
-      <p className="mt-1 whitespace-pre-line text-sm text-slate-700">
+      <p className="mt-1.5 whitespace-pre-line text-sm leading-relaxed text-ink-700">
         {comment.content || '-'}
       </p>
-      <p className="mt-1 text-xs text-slate-500">[ {formatMeta(comment)} ]</p>
+      <p className="mt-2 font-mono text-[11px] tabular-nums text-ink-500">
+        ♥ {comment.like_count ?? 0}
+        {comment.create_time ? ` · ${comment.create_time}` : ''}
+      </p>
     </div>
   );
 }
@@ -82,7 +80,7 @@ export function CommentTree({ comments }: CommentTreeProps): JSX.Element {
     return (
       <div
         data-testid="comment-tree-empty"
-        className="text-slate-500 text-sm py-6 text-center"
+        className="rounded-2xl border border-dashed border-rule bg-paper-50 py-10 text-center text-sm text-ink-500"
       >
         暂无评论
       </div>
@@ -98,7 +96,10 @@ export function CommentTree({ comments }: CommentTreeProps): JSX.Element {
           <li key={comment.comment_id}>
             <CommentRow comment={comment} />
             {hasSub && (
-              <ul role="list" className="ml-6 mt-2 space-y-2">
+              <ul
+                role="list"
+                className="ml-6 mt-2 space-y-2 border-l border-rule pl-4"
+              >
                 {comment.sub_comments!.map((sub) => (
                   <li key={sub.comment_id}>
                     <CommentRow comment={sub} />

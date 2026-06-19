@@ -70,3 +70,44 @@ class TaskCreateResponse(BaseModel):
             "transitions the row through ``running`` to a terminal state."
         ),
     )
+
+
+class TaskListResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    items: list[dict] = Field(default_factory=list)
+    total: int = Field(default=0)
+
+
+class TaskDetailResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: int
+    keyword: str
+    status: str
+    note_count: int
+    max_notes: int
+    started_at: str | None = None
+    finished_at: str | None = None
+    error_msg: str | None = None
+    json_path: str | None = None
+    created_at: str
+    summary: dict
+    reports: list[dict] = Field(default_factory=list)
+
+
+class AIReportCreateRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    provider: str = "openai"
+    model: str = "mock"
+
+
+class AIReportResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    id: int
+    task_id: int
+    provider: str
+    model: str
+    prompt_version: str
+    report_md: str
+    created_at: str

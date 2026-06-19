@@ -122,14 +122,14 @@ export function KeywordInput({
     <form
       onSubmit={handleSubmit}
       data-testid="keyword-input"
-      className="flex flex-col gap-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-start"
+      className="grid grid-cols-1 gap-5 rounded-2xl border border-rule bg-white/80 p-6 shadow-lift backdrop-blur sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-end"
     >
-      <div className="flex flex-1 flex-col gap-1">
+      <div className="flex flex-col gap-2">
         <label
           htmlFor={keywordId}
-          className="text-sm font-medium text-slate-700"
+          className="font-mono text-[10.5px] uppercase tracking-[0.22em] text-ink-500"
         >
-          关键词
+          Keyword · 关键词
         </label>
         <input
           id={keywordId}
@@ -138,30 +138,30 @@ export function KeywordInput({
           onChange={(event) => setKeyword(event.target.value)}
           disabled={isBusy}
           maxLength={200}
-          placeholder="输入小红书话题关键词,1-50 个字符"
+          placeholder="输入一个小红书话题，比如「秋冬穿搭」"
           aria-invalid={keywordValidation.helperText !== null}
           aria-describedby={
             keywordValidation.helperText ? keywordHelperId : undefined
           }
-          className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none transition focus:border-rose-400 focus:ring-2 focus:ring-rose-200 disabled:cursor-not-allowed disabled:bg-slate-100"
+          className="w-full border-b-2 border-ink-900/15 bg-transparent px-1 pb-2 font-display text-2xl tracking-tightish text-ink-900 placeholder:text-ink-400 placeholder:font-normal focus:border-claret-500 focus:outline-none disabled:cursor-not-allowed disabled:text-ink-400"
         />
         {keywordValidation.helperText !== null && (
           <p
             id={keywordHelperId}
             role="alert"
-            className="text-xs text-rose-600"
+            className="text-xs text-claret-500"
           >
             {keywordValidation.helperText}
           </p>
         )}
       </div>
 
-      <div className="flex w-full flex-col gap-1 sm:w-40">
+      <div className="flex w-full flex-col gap-2 sm:w-28">
         <label
           htmlFor={maxNotesId}
-          className="text-sm font-medium text-slate-700"
+          className="font-mono text-[10.5px] uppercase tracking-[0.22em] text-ink-500"
         >
-          采集数量
+          n ≤ 20
         </label>
         <input
           id={maxNotesId}
@@ -177,29 +177,30 @@ export function KeywordInput({
           aria-describedby={
             maxNotesValidation.helperText ? maxNotesHelperId : undefined
           }
-          className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none transition focus:border-rose-400 focus:ring-2 focus:ring-rose-200 disabled:cursor-not-allowed disabled:bg-slate-100"
+          className="w-full border-b-2 border-ink-900/15 bg-transparent px-1 pb-2 text-center font-mono text-2xl tabular-nums text-ink-900 focus:border-claret-500 focus:outline-none disabled:cursor-not-allowed disabled:text-ink-400"
         />
         {maxNotesValidation.helperText !== null && (
           <p
             id={maxNotesHelperId}
             role="alert"
-            className="text-xs text-rose-600"
+            className="text-xs text-claret-500"
           >
             {maxNotesValidation.helperText}
           </p>
         )}
       </div>
 
-      <div className="flex flex-col justify-end sm:pt-6">
-        <button
-          type="submit"
-          disabled={!canSubmit}
-          aria-disabled={!canSubmit}
-          className="inline-flex items-center justify-center rounded-md bg-rose-500 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-rose-600 disabled:cursor-not-allowed disabled:bg-slate-300"
-        >
-          开始采集
-        </button>
-      </div>
+      <button
+        type="submit"
+        disabled={!canSubmit}
+        aria-disabled={!canSubmit}
+        className="group relative inline-flex items-center justify-center gap-2 rounded-xl bg-ink-900 px-6 py-3.5 font-display text-sm font-medium text-paper-50 shadow-lift transition hover:bg-claret-500 disabled:cursor-not-allowed disabled:bg-ink-400 disabled:hover:bg-ink-400"
+      >
+        <span>开始采集</span>
+        <span aria-hidden className="transition group-hover:translate-x-0.5">
+          →
+        </span>
+      </button>
     </form>
   );
 }

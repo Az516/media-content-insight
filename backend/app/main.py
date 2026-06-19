@@ -148,6 +148,7 @@ def _register_placeholder_routes(app: FastAPI) -> None:
     # Import lazily so a circular-import bug in any router module
     # (or a future dependency that calls ``create_app()`` to peek at
     # the schema) cannot wedge the application package itself.
+    from app.api.ai_reports import router as ai_reports_router
     from app.api.comments import router as comments_router
     from app.api.notes import router as notes_router
     from app.api.tasks import router as tasks_router
@@ -155,6 +156,7 @@ def _register_placeholder_routes(app: FastAPI) -> None:
     app.include_router(tasks_router)
     app.include_router(notes_router)
     app.include_router(comments_router)
+    app.include_router(ai_reports_router)
 
 
 def _register_exception_handlers(app: FastAPI) -> None:
