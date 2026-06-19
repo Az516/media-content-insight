@@ -1,4 +1,4 @@
-"""HTTP routing layer for xhs-content-insight.
+"""HTTP routing layer for media-content-insight.
 
 Each module in this package owns exactly one thematic group of routes
 (``tasks``, ``notes``, ``comments``, ``ai_reports``). The aggregate set

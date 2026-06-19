@@ -1,9 +1,9 @@
 {
-  "name": "xhs-content-insight-frontend",
+  "name": "media-content-insight-frontend",
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "前端 SPA: 小红书内容洞察 MVP (xhs-content-insight)",
+  "description": "前端 SPA: 多平台内容洞察 MVP (media-content-insight)",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",

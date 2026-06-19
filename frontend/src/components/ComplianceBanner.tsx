@@ -9,7 +9,7 @@
  */
 
 const COMPLIANCE_TEXT =
-  '本工具仅供学习研究和小规模数据分析,请遵守平台条款,不得用于自动化营销、批量发布或商业用途';
+  '本工具仅供学习研究和小规模数据分析,适用于多平台公开内容洞察,请遵守各平台条款,不得用于自动化营销、批量发布或商业用途';
 
 export function ComplianceBanner(): JSX.Element {
   return (

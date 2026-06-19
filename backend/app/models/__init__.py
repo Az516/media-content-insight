@@ -1,4 +1,4 @@
-"""SQLAlchemy ORM models for xhs-content-insight.
+"""SQLAlchemy ORM models for media-content-insight.
 
 Importing this package side-effect registers every model class on
 ``Base.metadata`` so that :func:`Base.metadata.create_all` (called from

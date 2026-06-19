@@ -14,7 +14,7 @@ function Brand(): JSX.Element {
     <Link
       to="/"
       className="group inline-flex items-baseline gap-2 leading-none"
-      aria-label="xhs 内容洞察实验室"
+      aria-label="多平台内容洞察实验室"
     >
       <span
         aria-hidden
@@ -23,7 +23,7 @@ function Brand(): JSX.Element {
         ◆
       </span>
       <span className="font-display text-[22px] font-semibold tracking-tightish text-ink-900">
-        xhs
+        media
         <span className="px-0.5 text-claret-500">·</span>
         <span className="text-ink-700">insight</span>
       </span>
@@ -96,7 +96,7 @@ function Shell({ children }: { children: JSX.Element }): JSX.Element {
       <footer className="mt-auto border-t border-rule bg-paper-50/60 py-6">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-6 text-[12px] text-ink-500">
           <span className="font-mono uppercase tracking-[0.18em]">
-            local · research only
+            multi-platform · research only
           </span>
           <span>
             单次采集上限 <span className="font-mono text-ink-700">20</span> 条 ·

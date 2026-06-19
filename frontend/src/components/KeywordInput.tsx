@@ -138,7 +138,7 @@ export function KeywordInput({
           onChange={(event) => setKeyword(event.target.value)}
           disabled={isBusy}
           maxLength={200}
-          placeholder="输入一个小红书话题，比如「秋冬穿搭」"
+          placeholder="输入一个内容话题，比如「秋冬穿搭」"
           aria-invalid={keywordValidation.helperText !== null}
           aria-describedby={
             keywordValidation.helperText ? keywordHelperId : undefined

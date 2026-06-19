@@ -1,8 +1,8 @@
-# 需求文档:小红书内容洞察 MVP (xhs-content-insight)
+﻿# 需求文档:多平台内容洞察 MVP (media-content-insight)
 
 ## 简介
 
-`xhs-content-insight` 是一个本地化、单用户、研究用途的小红书内容洞察 MVP。系统封装开源项目 [NanmiCoder/MediaCrawler](https://github.com/NanmiCoder/MediaCrawler) (以 git submodule 形式接入,**严禁修改其源码**),通过关键词触发采集约 20 条小红书笔记及其热门评论,落库到 SQLite 并归档为 JSON 文件,然后在 React 前端提供素材池、笔记详情、评论洞察、AI 分析报告等视图。
+`media-content-insight` 是一个本地化、单用户、研究用途的多平台内容洞察 MVP。系统封装开源项目 [NanmiCoder/MediaCrawler](https://github.com/NanmiCoder/MediaCrawler) (以 git submodule 形式接入,**严禁修改其源码**),面向小红书、B 站、抖音、公众号等内容源的关键词研究场景,采集少量内容及热门评论,落库到 SQLite 并归档为 JSON 文件,然后在 React 前端提供素材池、内容详情、评论洞察、AI 分析报告等视图。
 
 本需求文档由已批准的 `design.md` 反向推导而来,职责是把设计中的功能边界、状态机、错误处理、数据完整性约束以及合规红线,以 EARS 格式固化为可验证的验收条件。
 
@@ -12,7 +12,7 @@
 
 ## 术语表 (Glossary)
 
-- **System**:整个 `xhs-content-insight` 应用,包含前端、后端、本地存储、第三方 MediaCrawler。
+- **System**:整个 `media-content-insight` 应用,包含前端、后端、本地存储、第三方 MediaCrawler。
 - **API_Layer**:后端 FastAPI 的路由层 (`backend/app/api/*`),负责参数校验与编排。
 - **Crawler_Service**:后端 `backend/app/services/crawler_service.py`,封装对 MediaCrawler 的子进程调用。
 - **AI_Analyzer**:后端 `backend/app/services/ai_analyzer.py`,LLM Provider 抽象层及 OpenAI / DeepSeek / Gemini 实现。
@@ -32,7 +32,7 @@
 
 ### 需求 1:采集任务创建
 
-**用户故事:** 作为研究人员,我希望通过关键词一键启动采集任务,以便获取该话题下的小红书素材。
+**用户故事:** 作为研究人员,我希望通过关键词一键启动采集任务,以便获取该话题下的平台内容素材。
 
 #### 验收条件
 
@@ -49,7 +49,7 @@
 
 ### 需求 2:全局单任务并发约束
 
-**用户故事:** 作为系统操作者,我希望任意时刻只允许一个采集任务在执行,以便降低对小红书平台的压力并规避风控。
+**用户故事:** 作为系统操作者,我希望任意时刻只允许一个采集任务在执行,以便降低对目标平台的压力并规避风控。
 
 #### 验收条件
 
@@ -327,12 +327,12 @@
 #### 验收条件
 
 1. THE System SHALL 仅实现「关键词搜索 → 采集笔记 + 评论 → 分析」一条数据流,且后端对外暴露的 HTTP 路由集合 SHALL 完全等于需求 1、4、5、10、11、12、13、14、16 中显式声明的路由集合,不存在任何额外路由。
-2. THE System SHALL 不实现自动评论功能,具体表现为:后端不存在向小红书发起 POST/comment 类写操作的代码路径,且 Crawler_Service 调用 MediaCrawler 时 `--type` 参数取值仅限于 `search`(见需求 6)。
-3. THE System SHALL 不实现自动点赞功能,具体表现为:后端不存在向小红书发起点赞类写操作的代码路径,且不向 MediaCrawler 传递任何点赞相关参数。
-4. THE System SHALL 不实现自动收藏功能,具体表现为:后端不存在向小红书发起收藏类写操作的代码路径,且不向 MediaCrawler 传递任何收藏相关参数。
-5. THE System SHALL 不实现自动私信功能,具体表现为:后端不存在向小红书发起私信类写操作的代码路径,且不向 MediaCrawler 传递任何私信相关参数。
-6. THE System SHALL 不实现自动关注或自动取关功能,具体表现为:后端不存在向小红书发起关注/取关类写操作的代码路径,且不向 MediaCrawler 传递任何关注相关参数。
-7. THE System SHALL 不实现自动发布或自动改稿功能,具体表现为:后端不存在向小红书发起发布、编辑、删除笔记类写操作的代码路径。
+2. THE System SHALL 不实现自动评论功能,具体表现为:后端不存在向目标平台发起 POST/comment 类写操作的代码路径,且 Crawler_Service 调用 MediaCrawler 时 `--type` 参数取值仅限于 `search`(见需求 6)。
+3. THE System SHALL 不实现自动点赞功能,具体表现为:后端不存在向目标平台发起点赞类写操作的代码路径,且不向 MediaCrawler 传递任何点赞相关参数。
+4. THE System SHALL 不实现自动收藏功能,具体表现为:后端不存在向目标平台发起收藏类写操作的代码路径,且不向 MediaCrawler 传递任何收藏相关参数。
+5. THE System SHALL 不实现自动私信功能,具体表现为:后端不存在向目标平台发起私信类写操作的代码路径,且不向 MediaCrawler 传递任何私信相关参数。
+6. THE System SHALL 不实现自动关注或自动取关功能,具体表现为:后端不存在向目标平台发起关注/取关类写操作的代码路径,且不向 MediaCrawler 传递任何关注相关参数。
+7. THE System SHALL 不实现自动发布或自动改稿功能,具体表现为:后端不存在向目标平台发起发布、编辑、删除笔记类写操作的代码路径。
 8. THE System SHALL 不实现批量账号矩阵管理或多账号轮换功能,具体表现为:系统在任意时刻仅使用单一登录态 Cookie,配置层不提供账号列表、账号池、账号轮换策略等结构。
 9. THE System SHALL 不实现绕过登录验证、滑块验证或短信验证码的功能,具体表现为:不包含自动识别滑块、自动填写短信验证码、自动伪造登录 Token 的代码路径;当 MediaCrawler 子进程因登录态失效而退出时,系统遵循需求 8 的错误处理流程并将任务标记为 `failed`,不发起任何自动绕过尝试。
 10. THE Frontend_UI SHALL 不暴露第 2 至第 9 条所列任意一种禁止功能的入口、按钮、菜单项、表单或对应 API 调用,具体表现为:`frontend/src/` 下不存在调用上述禁止功能的代码,前端路由集合与需求 17 第 1 条声明的路由集合完全一致。

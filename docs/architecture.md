@@ -1,4 +1,4 @@
-# 架构文档(草稿):xhs-content-insight
+# 架构文档(草稿):media-content-insight
 
 > 本文档为草稿,随后续 M1 - M7 里程碑迭代;现阶段仅锁定与子模块 / 第三方依赖相关的硬约束。
 

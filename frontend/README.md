@@ -1,4 +1,4 @@
-# frontend (xhs-content-insight)
+# frontend (media-content-insight)
 
 React + Vite + TypeScript + Tailwind 单页应用。仅供本地开发,严禁对外部署或开放访问。
 

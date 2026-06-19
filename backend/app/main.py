@@ -1,4 +1,4 @@
-"""FastAPI entrypoint for the xhs-content-insight backend.
+"""FastAPI entrypoint for the media-content-insight backend.
 
 This module wires up the bare-minimum scaffold that subsequent tasks build on:
 
@@ -83,10 +83,10 @@ def create_app() -> FastAPI:
     Kept as a factory so that tests can build isolated app instances.
     """
     app = FastAPI(
-        title="xhs-content-insight backend",
+        title="media-content-insight backend",
         version="0.1.0",
         description=(
-            "Local, single-user, research-only Xiaohongshu content insight "
+            "Local, single-user, research-only multi-platform content insight "
             "MVP backend. See docs/compliance.md for the full compliance "
             "baseline."
         ),
@@ -143,7 +143,7 @@ def _register_placeholder_routes(app: FastAPI) -> None:
     @app.get("/", tags=["health"], summary="Liveness probe")
     async def root() -> dict[str, str]:
         """Return a small JSON document confirming the service is up."""
-        return {"status": "ok", "service": "xhs-content-insight"}
+        return {"status": "ok", "service": "media-content-insight"}
 
     # Import lazily so a circular-import bug in any router module
     # (or a future dependency that calls ``create_app()`` to peek at

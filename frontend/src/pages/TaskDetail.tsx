@@ -29,7 +29,7 @@ function failureHint(errorMsg: string | null | undefined): string {
   if (!errorMsg) return '请查看详情或稍后重试。';
   const lower = errorMsg.toLowerCase();
   if (lower.startsWith('login_expired')) {
-    return '登录态已失效，请重新登录小红书并更新 Cookie。';
+    return '登录态已失效，请重新登录目标平台并更新 Cookie。';
   }
   if (lower.startsWith('risk_control')) {
     return '触发风控，请暂停采集等待冷却或人工处理。';

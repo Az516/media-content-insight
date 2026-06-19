@@ -1,8 +1,8 @@
-# 设计文档:小红书内容洞察 MVP (xhs-content-insight)
+﻿# 设计文档:多平台内容洞察 MVP (media-content-insight)
 
 ## 概述
 
-`xhs-content-insight` 是一个基于开源项目 [NanmiCoder/MediaCrawler](https://github.com/NanmiCoder/MediaCrawler) 二次封装的小红书内容洞察 MVP。用户在前端输入关键词后,后端通过 `CrawlerService` 调用 MediaCrawler(以 git submodule 形式接入,不修改其源码)采集约 20 条相关笔记,落库到 SQLite 并归档为 JSON 文件;前端提供素材池、笔记详情、评论洞察、AI 分析报告等多个视图。
+`media-content-insight` 是一个基于开源项目 [NanmiCoder/MediaCrawler](https://github.com/NanmiCoder/MediaCrawler) 二次封装的多平台内容洞察 MVP。用户在前端输入关键词后,后端通过 `CrawlerService` 调用 MediaCrawler(以 git submodule 形式接入,不修改其源码)采集约 20 条相关笔记,落库到 SQLite 并归档为 JSON 文件;前端提供素材池、笔记详情、评论洞察、AI 分析报告等多个视图。
 
 技术栈:**Python + FastAPI + SQLAlchemy(后端)、SQLite(存储)、React + Vite + TypeScript + Tailwind CSS(前端)、MediaCrawler(爬虫引擎,只调用不修改)**。AI 分析模块 `ai_analyzer.py` 抽象为接口,默认提供 OpenAI / DeepSeek / Gemini 三种 Provider 实现,通过环境变量切换。
 
@@ -202,7 +202,7 @@ erDiagram
 
 #### 取舍结论
 
-**MVP 阶段采用「方案 A 子进程」** 作为默认实现,接口层 `CrawlerService.run_xhs_search()` 以 async 形式暴露,内部通过 `asyncio.create_subprocess_exec` 启动 MediaCrawler。后续若需要实时进度上报,再切到方案 B 或两者混合,但 `CrawlerService` 的对外接口保持不变。
+**MVP 阶段采用「方案 A 子进程」** 作为默认实现,接口层 `CrawlerService.run_keyword_search()` 以 async 形式暴露,内部通过 `asyncio.create_subprocess_exec` 启动 MediaCrawler。后续若需要实时进度上报,再切到方案 B 或两者混合,但 `CrawlerService` 的对外接口保持不变。
 
 ### 5. 合规与风控边界(红线,严格遵守)
 
@@ -229,7 +229,7 @@ erDiagram
 ### 1. 完整目录结构
 
 ```
-xhs-content-insight/
+media-content-insight/
 ├── backend/
 │   ├── app/
 │   │   ├── __init__.py
@@ -635,7 +635,7 @@ class CrawlerService:
         self.mc_python: str = settings.MEDIA_CRAWLER_PYTHON  # 可单独 venv
         self.timeout_s: int = settings.CRAWL_TIMEOUT_SECONDS  # 默认 600
 
-    async def run_xhs_search(
+    async def run_keyword_search(
         self,
         task_id: int,
         keyword: str,
@@ -742,7 +742,7 @@ class CrawlerService:
 **关键算法伪代码:采集主流程**
 
 ```pascal
-ALGORITHM run_xhs_search(task_id, keyword, max_notes)
+ALGORITHM run_keyword_search(task_id, keyword, max_notes)
 INPUT:
     task_id of INTEGER, keyword of STRING, max_notes of INTEGER
 OUTPUT:
@@ -828,7 +828,7 @@ class AIReport:
 
 
 PROMPT_V1 = """\
-你是一名资深内容运营分析师。以下是关于关键词「{keyword}」的小红书笔记与评论摘要。
+你是一名资深内容运营分析师。以下是关于关键词「{keyword}」的平台内容与评论摘要。
 请输出一份 Markdown 格式的内容洞察报告,包含:
 1. 选题方向与高频主题
 2. 用户画像与情感倾向
@@ -1133,7 +1133,7 @@ function usePolling<T>(
 | 里程碑 | 内容 | 验收标准 |
 | --- | --- | --- |
 | **M1 · 项目脚手架 + MediaCrawler 接入** | 创建 backend / frontend / third_party 目录;`MediaCrawler` 以 git submodule 引入;后端 FastAPI hello world 跑通,前端 Vite 跑通,Tailwind 配置 OK | `cd backend && uvicorn app.main:app` 可启;`cd frontend && pnpm dev` 可启;`git submodule status` 看到 MediaCrawler |
-| **M2 · CrawlerService 跑通完整链路** | 实现 `CrawlerService.run_xhs_search`,子进程方式调用 MediaCrawler 完成「关键词→20 条笔记」端到端采集 | 命令行触发可拿到 ≥1 条真实笔记数据,异常路径(登录失效/超时)有明确错误码 |
+| **M2 · CrawlerService 跑通完整链路** | 实现 `CrawlerService.run_keyword_search`,子进程方式调用 MediaCrawler 完成「关键词→20 条笔记」端到端采集 | 命令行触发可拿到 ≥1 条真实笔记数据,异常路径(登录失效/超时)有明确错误码 |
 | **M3 · SQLite Schema + 写入 + JSON 归档** | 5 张表 SQLAlchemy 模型 + DDL 脚本;`DataStore` 完成 upsert + archive_json;数据迁移脚本 | 跑一次任务后,sqlite 中能查到 notes/comments;`data/json/{task_id}.json` 存在且结构正确 |
 | **M4 · 后端 API 全部联通** | 实现 3.1 ~ 3.9 全部 API;Pydantic schema;统一错误处理 | OpenAPI 文档 `/docs` 列出全部接口;`pytest` 主流程绿灯 |
 | **M5 · 前端素材池 + 笔记详情** | Home + TaskDetail + NoteList + NoteDetail 四个页面;`ComplianceBanner` 全局挂载 | 端到端:输入关键词 → 查看素材池 → 点开笔记看到评论树 |

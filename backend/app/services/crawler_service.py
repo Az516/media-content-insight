@@ -11,7 +11,7 @@ independently:
   failure modes downstream callers must distinguish (requirements
   6.6, 8.1, 8.2, 8.3, 8.4).
 * :class:`CrawlResult` is the success-path return type carried
-  through :meth:`CrawlerService.run_xhs_search` (task 3.3, future
+  through :meth:`CrawlerService.run_keyword_search` (task 3.3, future
   work).
 * :class:`SubprocessOutcome` is the internal hand-off type produced
   by :meth:`CrawlerService._invoke_subprocess` (this task, 3.1) and
@@ -27,7 +27,7 @@ What is intentionally NOT in this task
 
 The error classification (login / risk / verify), the read-back of
 MediaCrawler's on-disk output, and the orchestration of the full
-``run_xhs_search`` lifecycle land in tasks 3.2 and 3.3. The dataclass
+``run_keyword_search`` lifecycle land in tasks 3.2 and 3.3. The dataclass
 hand-off (:class:`SubprocessOutcome`) is shaped to make that follow-on
 work a one-liner: tasks 3.2 / 3.3 only need to inspect ``returncode``
 / ``stderr_bytes`` and call ``_read_mc_output(raw_dir)`` to decode
@@ -108,7 +108,7 @@ class RiskControlError(CrawlerError):
 
 @dataclass(frozen=True)
 class CrawlResult:
-    """Outcome returned by :meth:`CrawlerService.run_xhs_search` on success.
+    """Outcome returned by :meth:`CrawlerService.run_keyword_search` on success.
 
     ``error_msg`` is reserved for callers who choose to surface a
     non-fatal warning alongside an otherwise-successful crawl; the
@@ -167,7 +167,7 @@ class CrawlerService:
     """Wraps the MediaCrawler subprocess and the surrounding lifecycle.
 
     Only :meth:`_invoke_subprocess` is implemented in task 3.1. The
-    public entry point :meth:`run_xhs_search` and the error
+    public entry point :meth:`run_keyword_search` and the error
     classification helpers / on-disk reader land in tasks 3.2 and 3.3
     respectively. The constructor and instance attributes are designed
     to support both sets of tasks so later work only needs to add
@@ -448,7 +448,7 @@ class CrawlerService:
     # Public entry point -- task 3.3
     # ------------------------------------------------------------------
 
-    async def run_xhs_search(
+    async def run_keyword_search(
         self,
         task_id: int,
         keyword: str,
@@ -673,7 +673,7 @@ class CrawlerService:
             raise
 
     # ------------------------------------------------------------------
-    # Defensive helpers used by ``run_xhs_search`` -- task 3.3
+    # Defensive helpers used by ``run_keyword_search`` -- task 3.3
     # ------------------------------------------------------------------
 
     async def _safe_mark_failed(self, task_id: int, error_msg: str) -> None:

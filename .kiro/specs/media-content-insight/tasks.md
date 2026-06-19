@@ -1,4 +1,4 @@
-# 实施计划:小红书内容洞察 MVP (xhs-content-insight)
+﻿# 实施计划:多平台内容洞察 MVP (media-content-insight)
 
 ## 概述
 
@@ -116,7 +116,7 @@
     - 在 `_read_mc_output` 阶段对二级评论按 `(note_id, like_count DESC)` 截取每条笔记 Top `settings.HOT_COMMENT_TOP_N` 条且仅保留 `is_top_hot=1`(实现需求 13.5)
     - _需求: 6.5, 7.2, 8.1, 8.2, 13.5_
 
-  - [x] 3.3 实现 run_xhs_search 主流程与 AuditLog
+  - [x] 3.3 实现 run_keyword_search 主流程与 AuditLog
     - 入口先调用 `store.mark_task_running(task_id)`
     - TRY 块按序:`raw_dir <- _invoke_subprocess(keyword, max_notes)` → `(raw_notes, raw_comments) <- _read_mc_output(raw_dir)` → `upsert_authors_from_raw(raw_notes)` → `upsert_notes(task_id, raw_notes[:min(len(raw_notes), max_notes)])` → `upsert_comments(raw_comments)` → `archive_json(task_id)` → `mark_task_success(task_id, note_count=min(len(raw_notes), max_notes), json_path=...)`
     - 若 `len(raw_notes) == 0`:转 `mark_task_failed(task_id, "no_notes_returned")`,不写 `notes` / `comments` / `authors`,不生成 JSON 归档
@@ -146,7 +146,7 @@
     - 在 `backend/app/api/tasks.py` 注册 `POST /api/tasks`
     - 校验:`keyword.strip()` 长度 ∈ `[1, 50]`,否则 422 `INVALID_KEYWORD`;`max_notes` 整数 ∈ `[1, 20]`,否则 422 `OVER_LIMIT`(均不在 `tasks` 表中创建任何记录)
     - 在显式开启串行隔离的事务内执行 `SELECT COUNT(*) FROM tasks WHERE status='running'`,>0 时返回 409 `TASK_BUSY` 且不修改任何 running 任务字段;事务读取本身失败返回 500 `INTERNAL_ERROR`
-    - 通过 `BackgroundTasks` 异步触发 `CrawlerService.run_xhs_search(task_id, keyword, max_notes)`;接口在 2 秒内返回 202 + `{"task_id": <int>, "status": "pending"}`
+    - 通过 `BackgroundTasks` 异步触发 `CrawlerService.run_keyword_search(task_id, keyword, max_notes)`;接口在 2 秒内返回 202 + `{"task_id": <int>, "status": "pending"}`
     - 数据库插入失败或未预期异常返回 500 `INTERNAL_ERROR`,且不在 `tasks` 表中保留任何记录
     - _需求: 1.1, 1.2, 1.3, 1.4, 1.5, 1.7, 2.1, 2.2, 2.4, 2.6_
 
@@ -155,7 +155,7 @@
     - **校验需求 2.1, 2.2**
     - 文件:`backend/tests/test_concurrency_property.py`,使用 `hypothesis` + `asyncio.gather` 生成任意并发的 `POST /api/tasks` 请求序列(任意 keyword、`max_notes` 组合)
     - 在每次并发批次后断言 `SELECT COUNT(*) FROM tasks WHERE status='running' ≤ 1`,且并发争抢中除一个请求成功(202 + `pending`)外,其余请求必须返回 409 `TASK_BUSY` 而非创建新任务
-    - 通过 mock `CrawlerService.run_xhs_search` 让其挂起一段时间以制造可观察的 running 窗口
+    - 通过 mock `CrawlerService.run_keyword_search` 让其挂起一段时间以制造可观察的 running 窗口
 
   - [-] 5.3 实现 GET /api/tasks 任务列表
     - 支持 `status` / `limit` / `offset` 查询参数;按 `(created_at DESC, id DESC)` 排序,以保证返回顺序确定
@@ -363,7 +363,7 @@
 
 - [~] 12. 最终检查点 - 全量验收与合规复核
   - 运行后端全部测试(含 6 条属性测试 1-6)与前端测试,确认全部通过
-  - 按 `docs/compliance.md` 与需求 19、20 逐条复核仓库:`grep` 全仓确保不存在向小红书发起评论 / 点赞 / 收藏 / 私信 / 关注 / 发布的代码路径,前端路由集合恰好等于需求 17.1 所声明的 7 条,后端 HTTP 路由集合恰好等于需求 19.1 中所声明的 9 条
+  - 按 `docs/compliance.md` 与需求 19、20 逐条复核仓库:`grep` 全仓确保不存在向目标平台发起评论 / 点赞 / 收藏 / 私信 / 关注 / 发布的代码路径,前端路由集合恰好等于需求 17.1 所声明的 7 条,后端 HTTP 路由集合恰好等于需求 19.1 中所声明的 9 条
     - 确认 `.gitmodules` 中 `third_party/MediaCrawler` commit SHA 指针未被修改、git 历史中无对其内容的新增 / 修改 / 删除提交
     - 确认 `data/` 目录之外的磁盘路径无采集数据写入,`raw_json` 中已剥离手机号 / 邮箱 / 身份证号
     - 确认 `.env.example` 中 `HOST=127.0.0.1`,FastAPI 默认仅本机监听

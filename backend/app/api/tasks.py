@@ -32,9 +32,9 @@ async def _run_real_crawl(
 ) -> None:
     """Background worker for the real MediaCrawler chain."""
     try:
-        await crawler.run_xhs_search(task_id, keyword, max_notes)
+        await crawler.run_keyword_search(task_id, keyword, max_notes)
     except Exception:
-        # run_xhs_search already writes terminal task state;
+        # run_keyword_search already writes terminal task state;
         # we only keep the traceback for diagnostics.
         logger.exception(
             "background crawl failed",

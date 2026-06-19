@@ -86,7 +86,7 @@ export default function Home(): JSX.Element {
             <span className="font-display italic text-claret-500">.</span>
           </h1>
           <p className="mt-5 max-w-xl text-base leading-relaxed text-ink-500">
-            输入一个小红书话题词，本地化采集最多 20 条笔记与热门评论，
+            输入一个平台话题词，本地化采集最多 20 条内容与热门评论，
             自动归档为可分析的素材池、评论洞察与 AI 选题报告。
           </p>
         </div>

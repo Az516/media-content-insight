@@ -1,4 +1,4 @@
-"""Service layer for xhs-content-insight.
+"""Service layer for media-content-insight.
 
 Modules in this package orchestrate the persistence layer
 (:mod:`app.models`) plus external dependencies such as MediaCrawler

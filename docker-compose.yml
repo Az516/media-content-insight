@@ -1,5 +1,5 @@
 # ─────────────────────────────────────────────────────────────
-# xhs-content-insight - 本地开发环境(可选)
+# media-content-insight - 本地开发环境(可选)
 #
 # 用途:在本机一键启动后端 FastAPI 与前端 Vite dev server
 # 合规:所有端口均仅绑定到 127.0.0.1,禁止暴露到 0.0.0.0
@@ -10,7 +10,7 @@
 services:
   backend:
     image: python:3.11-slim
-    container_name: xhs-insight-backend
+    container_name: media-insight-backend
     working_dir: /app
     # 仅绑定到本机 loopback,禁止外网访问(需求 20.1 / 19.11)
     ports:
@@ -32,7 +32,7 @@ services:
 
   frontend:
     image: node:20-alpine
-    container_name: xhs-insight-frontend
+    container_name: media-insight-frontend
     working_dir: /app
     # 仅绑定到本机 loopback
     ports:

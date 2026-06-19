@@ -3,13 +3,13 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "xhs-content-insight-backend"
+name = "media-content-insight-backend"
 version = "0.1.0"
-description = "Backend for xhs-content-insight: a local, single-user, research-only Xiaohongshu content insight MVP."
+description = "Backend for media-content-insight: a local, single-user, research-only multi-platform content insight MVP."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "Apache-2.0" }
-authors = [{ name = "xhs-content-insight" }]
+authors = [{ name = "media-content-insight" }]
 
 # 仅供学习研究使用,严禁用于自动化营销 / 批量发布 / 商业用途。
 # 详见仓库根目录 docs/compliance.md。

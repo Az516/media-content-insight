@@ -10,7 +10,7 @@ import {
 
 type Theme = 'light' | 'dark';
 
-const STORAGE_KEY = 'xhs-theme';
+const STORAGE_KEY = 'media-insight-theme';
 
 function getStoredTheme(): Theme | null {
   const value = localStorage.getItem(STORAGE_KEY);
