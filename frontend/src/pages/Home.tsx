@@ -74,7 +74,7 @@ export default function Home(): JSX.Element {
         <div className="relative max-w-3xl">
           <div className="flex items-center gap-3 text-[11px] font-mono uppercase tracking-[0.25em] text-ink-500">
             <span className="h-[2px] w-8 bg-claret-500" />
-            <span>Issue · 2026 · Vol.01</span>
+            <span>本地研究 · 2026 · 第 01 期</span>
           </div>
           <h1
             className="mt-5 font-display text-5xl font-medium leading-[1.05] tracking-tightish text-ink-900 sm:text-[58px]"
@@ -87,7 +87,7 @@ export default function Home(): JSX.Element {
           </h1>
           <p className="mt-5 max-w-xl text-base leading-relaxed text-ink-500">
             输入一个平台话题词，本地化采集最多 20 条内容与热门评论，
-            自动归档为可分析的素材池、评论洞察与 AI 选题报告。
+            自动归档为可分析的素材池、评论洞察与智能选题报告。
           </p>
         </div>
 
@@ -150,11 +150,11 @@ export default function Home(): JSX.Element {
           {
             ord: '02',
             title: '评论洞察',
-            desc: '高频词、情感分布、Top 评论 — 看清话题底色与受众张力。',
+            desc: '高频词、情感分布、热门评论 — 看清话题底色与受众张力。',
           },
           {
             ord: '03',
-            title: 'AI 报告',
+            title: '智能报告',
             desc: '选题方向、内容结构、互动公式 — 一份可复用的内容备忘录。',
           },
         ].map((item, idx) => (
@@ -179,7 +179,7 @@ export default function Home(): JSX.Element {
         <div className="mb-6 flex items-end justify-between gap-4">
           <div>
             <div className="font-mono text-xs uppercase tracking-[0.25em] text-ink-500">
-              Archive
+              采集归档
             </div>
             <h2 className="mt-1 font-display text-3xl font-medium tracking-tightish text-ink-900">
               最近的采集

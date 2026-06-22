@@ -45,6 +45,13 @@ class TaskCreateRequest(BaseModel):
             "``INVALID_KEYWORD`` error code."
         ),
     )
+    platform: str = Field(
+        default="xhs",
+        description=(
+            "MediaCrawler platform key. Supported values are xhs, dy, ks, "
+            "bili, wb, tieba and zhihu. Defaults to xhs for compatibility."
+        ),
+    )
     max_notes: int = Field(
         default=20,
         description=(
@@ -61,6 +68,10 @@ class TaskCreateResponse(BaseModel):
     task_id: int = Field(
         ...,
         description="Autoincrement primary key of the freshly-created task.",
+    )
+    platform: str = Field(
+        default="xhs",
+        description="MediaCrawler platform key used by the task.",
     )
     status: str = Field(
         ...,
@@ -84,6 +95,7 @@ class TaskDetailResponse(BaseModel):
 
     id: int
     keyword: str
+    platform: str = "xhs"
     status: str
     note_count: int
     max_notes: int
@@ -100,6 +112,48 @@ class AIReportCreateRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     provider: str = "openai"
     model: str = "mock"
+
+
+class AIReportChatMessage(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    role: str
+    content: str
+
+
+class AIReportChatRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    message: str
+    model: str = "gpt-5.5"
+    history: list[AIReportChatMessage] = Field(default_factory=list)
+
+
+class AIReportChatResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    provider: str
+    model: str
+    message: str
+
+
+class ContentPlanRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    provider: str = "deepseek"
+    model: str = "gpt-5.5"
+
+
+class ContentDirectionsRequest(ContentPlanRequest):
+    opportunity: dict
+
+
+class ContentOutlineRequest(ContentPlanRequest):
+    opportunity: dict
+    direction: dict
+
+
+class ContentDraftRequest(ContentPlanRequest):
+    opportunity: dict
+    direction: dict
+    outline: dict
+    selected_title: str | None = None
 
 
 class AIReportResponse(BaseModel):

@@ -13,7 +13,7 @@ from app.api._errors import error_detail
 from app.api.deps import get_crawler, get_store
 from app.core.logger import logger
 from app.models import Author, Comment, Note, Task
-from app.services.crawler_service import CrawlerService
+from app.services.crawler_service import CrawlerError, CrawlerService, normalise_platform
 from app.services.data_store import DataStore
 
 router = APIRouter(prefix="/api", tags=["tasks"])
@@ -27,12 +27,13 @@ MAX_NOTES_MAX = 20
 async def _run_real_crawl(
     crawler: CrawlerService,
     task_id: int,
+    platform: str,
     keyword: str,
     max_notes: int,
 ) -> None:
     """Background worker for the real MediaCrawler chain."""
     try:
-        await crawler.run_keyword_search(task_id, keyword, max_notes)
+        await crawler.run_keyword_search(task_id, platform, keyword, max_notes)
     except Exception:
         # run_keyword_search already writes terminal task state;
         # we only keep the traceback for diagnostics.
@@ -41,6 +42,7 @@ async def _run_real_crawl(
             extra={
                 "event": "task_background_failed",
                 "task_id": task_id,
+                "platform": platform,
                 "keyword": keyword,
             },
         )
@@ -57,6 +59,17 @@ async def create_task(
     if not (KEYWORD_MIN_LEN <= len(keyword) <= KEYWORD_MAX_LEN):
         raise HTTPException(status_code=422, detail=error_detail("INVALID_KEYWORD", "keyword invalid", {"keyword": request.get("keyword")}))
     try:
+        platform = normalise_platform(str(request.get("platform", "xhs")))
+    except CrawlerError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail=error_detail(
+                "INVALID_PLATFORM",
+                "platform must be one of xhs/dy/ks/bili/wb/tieba/zhihu",
+                {"platform": request.get("platform"), "error": str(exc)},
+            ),
+        ) from exc
+    try:
         max_notes = int(request.get("max_notes", 20))
     except Exception:
         raise HTTPException(status_code=422, detail=error_detail("OVER_LIMIT", "max_notes invalid", {"max_notes": request.get("max_notes")}))
@@ -65,7 +78,29 @@ async def create_task(
 
     try:
         async with store.session() as session:
-            task = Task(keyword=keyword, status="pending", max_notes=max_notes)
+            active_task = (
+                await session.execute(
+                    select(Task)
+                    .where(Task.status.in_(("pending", "running")))
+                    .order_by(Task.created_at.desc(), Task.id.desc())
+                    .limit(1)
+                )
+            ).scalar_one_or_none()
+            if active_task is not None:
+                raise HTTPException(
+                    status_code=409,
+                    detail=error_detail(
+                        "TASK_ALREADY_RUNNING",
+                        "已有采集任务正在运行，请等待当前任务结束后再创建新任务。",
+                        {
+                            "task_id": active_task.id,
+                            "keyword": active_task.keyword,
+                            "status": active_task.status,
+                        },
+                    ),
+                )
+
+            task = Task(keyword=keyword, platform=platform, status="pending", max_notes=max_notes)
             session.add(task)
             await session.flush()
             task_id = int(task.id)
@@ -74,10 +109,10 @@ async def create_task(
     except (DBAPIError, SQLAlchemyError):
         raise HTTPException(status_code=500, detail=error_detail("INTERNAL_ERROR", "database error"))
 
-    background_tasks.add_task(_run_real_crawl, crawler, task_id, keyword, max_notes)
+    background_tasks.add_task(_run_real_crawl, crawler, task_id, platform, keyword, max_notes)
     return JSONResponse(
         status_code=202,
-        content={"task_id": task_id, "id": task_id, "status": "pending"},
+        content={"task_id": task_id, "id": task_id, "platform": platform, "status": "pending"},
     )
 
 
@@ -99,6 +134,7 @@ async def list_tasks(
                 {
                     "id": t.id,
                     "keyword": t.keyword,
+                    "platform": getattr(t, "platform", "xhs"),
                     "status": t.status,
                     "note_count": t.note_count,
                     "started_at": t.started_at,
@@ -139,6 +175,7 @@ async def get_task(task_id: int, store: DataStore = Depends(get_store)):
         return {
             "id": task.id,
             "keyword": task.keyword,
+            "platform": getattr(task, "platform", "xhs"),
             "status": task.status,
             "note_count": task.note_count,
             "max_notes": task.max_notes,

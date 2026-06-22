@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
 import { getNote } from '@/api/tasks';
+import { extractApiError } from '@/api/client';
 import CommentTree from '@/components/CommentTree';
 import type { NoteDetailResponse } from '@/types/models';
 
@@ -34,25 +35,33 @@ export default function NoteDetail(): JSX.Element {
   const { taskId, noteId } = useParams();
   const [data, setData] = useState<NoteDetailResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!noteId) return;
     setLoading(true);
+    setError(null);
     getNote(noteId)
       .then(setData)
+      .catch((err) => {
+        const apiError = extractApiError(err);
+        setError(apiError.code === 'NOTE_NOT_FOUND' ? '笔记不存在' : `加载笔记失败：${apiError.message}`);
+        setData(null);
+      })
       .finally(() => setLoading(false));
   }, [noteId]);
 
-  if (loading || !data) {
+  if (loading || error || !data) {
     return (
       <div className="rounded-2xl border border-rule bg-white/70 p-10 text-center text-sm text-ink-500">
-        {loading ? '加载笔记…' : '笔记不存在'}
+        {loading ? '加载笔记…' : error ?? '笔记不存在'}
       </div>
     );
   }
 
   const note = data.note;
   const author = data.author;
+  const tagList = parseTags(note.tag_list);
 
   return (
     <section className="space-y-8">
@@ -151,13 +160,13 @@ export default function NoteDetail(): JSX.Element {
             </div>
           )}
 
-          {note.tag_list && note.tag_list.length > 0 && (
+          {tagList.length > 0 && (
             <div className="rounded-2xl border border-rule bg-white/70 p-5 shadow-lift">
               <div className="font-mono text-[10.5px] uppercase tracking-[0.2em] text-ink-500">
                 Tags
               </div>
               <div className="mt-3 flex flex-wrap gap-1.5">
-                {note.tag_list.map((t) => (
+                {tagList.map((t) => (
                   <span
                     key={t}
                     className="rounded-full bg-claret-50 px-2.5 py-0.5 text-xs text-claret-600"
@@ -179,4 +188,16 @@ export default function NoteDetail(): JSX.Element {
       </div>
     </section>
   );
+}
+
+function parseTags(value: unknown): string[] {
+  if (Array.isArray(value)) return value.filter((item): item is string => typeof item === 'string' && item.length > 0);
+  if (typeof value !== 'string' || value.trim().length === 0) return [];
+  try {
+    const parsed = JSON.parse(value);
+    if (Array.isArray(parsed)) return parsed.filter((item): item is string => typeof item === 'string' && item.length > 0);
+  } catch {
+    return [];
+  }
+  return [];
 }

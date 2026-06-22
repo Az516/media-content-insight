@@ -15,18 +15,25 @@ const DEFAULT_BASE_URL = 'http://127.0.0.1:8000/api';
 export const REQUEST_TIMEOUT_MS = 30_000;
 
 /** 通过 Vite 环境变量 `VITE_API_BASE_URL` 覆盖默认 baseURL,便于本机调试。 */
-const baseURL: string =
+export const API_BASE_URL: string =
   (import.meta.env?.VITE_API_BASE_URL as string | undefined)?.trim() ||
   DEFAULT_BASE_URL;
 
 export const apiClient: AxiosInstance = axios.create({
-  baseURL,
+  baseURL: API_BASE_URL,
   timeout: REQUEST_TIMEOUT_MS,
   headers: {
     Accept: 'application/json',
     'Content-Type': 'application/json',
   },
 });
+
+export function proxiedMediaUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  if (url.startsWith('data:') || url.startsWith('blob:')) return url;
+  if (!/^https?:\/\//i.test(url)) return url;
+  return `${API_BASE_URL}/media/proxy?url=${encodeURIComponent(url)}`;
+}
 
 /**
  * 把 axios 错误统一抽取为 `ApiErrorBody`,便于上层渲染错误码与消息。

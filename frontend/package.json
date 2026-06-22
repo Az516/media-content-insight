@@ -10,7 +10,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "lint": "tsc -b --noEmit"
+    "lint": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
     "axios": "^1.7.7",

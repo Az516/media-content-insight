@@ -53,6 +53,7 @@ from __future__ import annotations
 import asyncio
 import json
 import sqlite3
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Final, Optional
@@ -60,7 +61,11 @@ from typing import Any, Final, Optional
 from app.core.config import settings
 from app.core.logger import audit_logger, logger
 from app.models import Task
-from app.services.data_store import DataStore
+from app.services.data_store import (
+    DataStore,
+    _normalise_comment_row,
+    _normalise_note_row,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -151,6 +156,7 @@ class SubprocessOutcome:
     stdout_bytes: bytes
     stderr_bytes: bytes
     raw_dir: Path
+    started_ms: int
 
 
 # ---------------------------------------------------------------------------
@@ -161,6 +167,52 @@ class SubprocessOutcome:
 #: Time we are willing to wait for the OS to actually release a killed
 #: subprocess. Requirement 8.3 mandates "10 秒内子进程释放".
 _KILL_WAIT_SECONDS: Final[int] = 10
+
+SUPPORTED_CRAWL_PLATFORMS: Final[tuple[str, ...]] = (
+    "xhs",
+    "dy",
+    "ks",
+    "bili",
+    "wb",
+    "tieba",
+    "zhihu",
+)
+
+_PLATFORM_NOTE_TABLES: Final[dict[str, tuple[str, ...]]] = {
+    "xhs": ("xhs_note", "xhs_note_content", "xhs_search_note", "note", "contents", "notes"),
+    "dy": ("douyin_aweme",),
+    "bili": ("bilibili_video",),
+    "ks": ("kuaishou_video",),
+    "wb": ("weibo_note",),
+    "tieba": ("tieba_note",),
+    "zhihu": ("zhihu_content",),
+}
+
+_PLATFORM_COMMENT_TABLES: Final[dict[str, tuple[str, ...]]] = {
+    "xhs": ("xhs_note_comment", "xhs_comment", "comment", "comments"),
+    "dy": ("douyin_aweme_comment",),
+    "bili": ("bilibili_video_comment",),
+    "ks": ("kuaishou_video_comment",),
+    "wb": ("weibo_note_comment",),
+    "tieba": ("tieba_comment",),
+    "zhihu": ("zhihu_comment",),
+}
+
+
+def normalise_platform(value: str | None) -> str:
+    """Return a supported MediaCrawler platform key or raise CrawlerError."""
+    platform = (value or "xhs").strip().lower()
+    aliases = {
+        "douyin": "dy",
+        "bilibili": "bili",
+        "weibo": "wb",
+        "kuaishou": "ks",
+    }
+    platform = aliases.get(platform, platform)
+    if platform not in SUPPORTED_CRAWL_PLATFORMS:
+        supported = ", ".join(SUPPORTED_CRAWL_PLATFORMS)
+        raise CrawlerError(f"unsupported_platform: {platform}; supported: {supported}")
+    return platform
 
 
 class CrawlerService:
@@ -191,7 +243,7 @@ class CrawlerService:
     # ------------------------------------------------------------------
 
     async def _invoke_subprocess(
-        self, keyword: str, max_notes: int
+        self, platform: str, keyword: str, max_notes: int
     ) -> SubprocessOutcome:
         """Launch the MediaCrawler subprocess and wait for it to finish.
 
@@ -285,10 +337,12 @@ class CrawlerService:
                 )
 
         # ---- 2) Build & spawn ---------------------------------------
+        crawl_started_ms = int(time.time() * 1000) - 5_000
         cmd: list[str] = [
             self.mc_python,
             "main.py",
-            "--platform", "xhs",
+            "--platform", platform,
+            "--lt", settings.MEDIA_CRAWLER_LOGIN_TYPE,
             "--type", "search",
             "--keywords", keyword,
             # MediaCrawler "db" means MySQL. We need local SQLite output
@@ -301,11 +355,14 @@ class CrawlerService:
             "--max_comments_count_singlenotes", "5",
             "--max_concurrency_num", "2",
         ]
+        if settings.MEDIA_CRAWLER_COOKIES.strip():
+            cmd.extend(["--cookies", settings.MEDIA_CRAWLER_COOKIES])
+
         logger.info(
             "spawn MediaCrawler subprocess",
             extra={
                 "event": "mc_spawn",
-                "cmd": cmd,
+                "cmd": _redact_command(cmd),
                 "cwd": str(mc_root),
                 "timeout_s": self.timeout_s,
             },
@@ -385,6 +442,7 @@ class CrawlerService:
             stdout_bytes=stdout_bytes or b"",
             stderr_bytes=stderr_bytes or b"",
             raw_dir=raw_dir,
+            started_ms=crawl_started_ms,
         )
 
     # ------------------------------------------------------------------
@@ -424,7 +482,10 @@ class CrawlerService:
         _classify_subprocess_failure_inline(outcome)
 
     async def _read_mc_output(
-        self, raw_dir: Path
+        self, raw_dir: Path,
+        platform: str = "xhs",
+        keyword: str | None = None,
+        min_timestamp_ms: int | None = None,
     ) -> tuple[list[dict], list[dict]]:
         """Read MediaCrawler's on-disk output and apply requirement 13.5.
 
@@ -442,7 +503,12 @@ class CrawlerService:
         text read mode -- so requirement 6.5 is upheld at the OS /
         library level rather than by convention.
         """
-        return await _read_mc_output_impl(raw_dir)
+        return await _read_mc_output_impl(
+            raw_dir,
+            platform=platform,
+            keyword=keyword,
+            min_timestamp_ms=min_timestamp_ms,
+        )
 
     # ------------------------------------------------------------------
     # Public entry point -- task 3.3
@@ -451,6 +517,7 @@ class CrawlerService:
     async def run_keyword_search(
         self,
         task_id: int,
+        platform: str,
         keyword: str,
         max_notes: int = 20,
     ) -> CrawlResult:
@@ -527,6 +594,7 @@ class CrawlerService:
         # programmer / API-layer bug (task not in ``pending``
         # state), not a runtime crawl failure, and the row remains
         # untouched on rejection (requirement 3.2).
+        platform = normalise_platform(platform)
         await self.store.mark_task_running(task_id)
 
         try:
@@ -535,7 +603,7 @@ class CrawlerService:
             # which is caught below; ``asyncio.TimeoutError`` from
             # ``asyncio.wait_for`` is handled by its dedicated
             # except branch.
-            outcome = await self._invoke_subprocess(keyword, max_notes)
+            outcome = await self._invoke_subprocess(platform, keyword, max_notes)
 
             # Step 2b: translate non-zero exits into the right
             # exception subclass. A clean exit (returncode == 0)
@@ -544,7 +612,10 @@ class CrawlerService:
 
             # Step 3: read on-disk output. Read-only by construction.
             raw_notes, raw_comments = await self._read_mc_output(
-                outcome.raw_dir
+                outcome.raw_dir,
+                platform=platform,
+                keyword=keyword,
+                min_timestamp_ms=outcome.started_ms,
             )
 
             # Step 3a: requirement 7.9 -- a 0-return-code crawl
@@ -557,6 +628,7 @@ class CrawlerService:
                     extra={
                         "event": "mc_no_notes",
                         "task_id": task_id,
+                        "platform": platform,
                         "keyword": keyword,
                     },
                 )
@@ -576,10 +648,14 @@ class CrawlerService:
             # 7.2, 7.6, 7.7).
             note_count = min(len(raw_notes), max_notes)
             effective_notes = raw_notes[:note_count]
+            effective_comments = _filter_comments_for_effective_notes(
+                raw_comments,
+                effective_notes,
+            )
 
             await self.store.upsert_authors_from_raw(effective_notes)
             await self.store.upsert_notes(task_id, effective_notes)
-            await self.store.upsert_comments(raw_comments)
+            await self.store.upsert_comments(effective_comments)
             await self.store.archive_json(task_id)
 
             # ``archive_json`` already wrote ``tasks.json_path`` to
@@ -602,6 +678,7 @@ class CrawlerService:
                     "event": "task_completed",
                     "task_id": task_id,
                     "keyword": keyword,
+                    "platform": platform,
                     "note_count": note_count,
                     "json_path": json_path_relative,
                 },
@@ -613,11 +690,11 @@ class CrawlerService:
                 json_path=json_path_relative,
             )
 
-        except LoginExpiredError as e:
+        except LoginExpiredError:
             # Requirement 8.1: stderr contained ``"login"``. The
-            # exception message is already the stderr excerpt
-            # (first 500 chars); we prefix it explicitly here.
-            error_msg = f"login_expired: {str(e)[:_STDERR_MAX_CHARS]}"
+            # third-party traceback is rarely actionable for users, so
+            # persist a stable remediation hint instead.
+            error_msg = f"login_expired: {_LOGIN_EXPIRED_HINT}"
             await self._safe_mark_failed(task_id, error_msg)
             await self._emit_audit_log(task_id, keyword, status="failed")
             raise
@@ -790,6 +867,10 @@ class CrawlerService:
 #: Maximum number of stderr characters retained for ``tasks.error_msg``
 #: (requirements 8.1, 8.2, 8.4: ``stderr[:500]``).
 _STDERR_MAX_CHARS: Final[int] = 500
+_LOGIN_EXPIRED_HINT: Final[str] = (
+    "小红书登录态失效或未配置 Cookie，请在 backend/.env 填写 "
+    "MEDIA_CRAWLER_COOKIES 后重启后端。"
+)
 
 #: Substrings (case-insensitive) used to classify a non-zero exit. Order
 #: matters: requirement 8.1 prioritises ``"login"`` over the risk/verify
@@ -811,28 +892,6 @@ _COMMENTS_DB_NAMES: Final[tuple[str, ...]] = (
     "comments.db",
     "xhs_comments.db",
     "sqlite_tables.db",
-)
-
-#: Whitelisted SQLite table names searched when reading notes. The first
-#: hit wins. ``xhs_note`` / ``xhs_note_content`` / ``xhs_search_note``
-#: cover the schemas observed in the MediaCrawler git history; the
-#: bare ``contents`` / ``notes`` names cover any thin wrapper that
-#: simplifies the schema downstream.
-_NOTE_TABLE_WHITELIST: Final[tuple[str, ...]] = (
-    "xhs_note_content",
-    "xhs_note",
-    "xhs_search_note",
-    "note",
-    "contents",
-    "notes",
-)
-
-#: Whitelisted SQLite table names searched when reading comments.
-_COMMENT_TABLE_WHITELIST: Final[tuple[str, ...]] = (
-    "xhs_note_comment",
-    "xhs_comment",
-    "comment",
-    "comments",
 )
 
 #: JSON filename candidates tried when ``raw_dir`` does not contain a
@@ -973,7 +1032,10 @@ def _open_sqlite_readonly(path: Path) -> sqlite3.Connection:
 
 
 def _read_rows_from_sqlite(
-    db_path: Path, table_whitelist: tuple[str, ...]
+    db_path: Path,
+    table_whitelist: tuple[str, ...],
+    *,
+    platform: str,
 ) -> list[dict]:
     """Read every row of the first whitelisted table found in ``db_path``.
 
@@ -1013,14 +1075,21 @@ def _read_rows_from_sqlite(
         )  # noqa: S608 - table name is from a hard-coded whitelist
         col_names = [d[0] for d in cursor.description]
         for row in cursor.fetchall():
-            rows.append(dict(zip(col_names, row)))
+            item = dict(zip(col_names, row))
+            item["__platform"] = platform
+            rows.append(item)
     finally:
         conn.close()
 
     return rows
 
 
-def _read_rows_from_json(raw_dir: Path, candidates: tuple[str, ...]) -> list[dict]:
+def _read_rows_from_json(
+    raw_dir: Path,
+    candidates: tuple[str, ...],
+    *,
+    platform: str,
+) -> list[dict]:
     """Read and concatenate JSON arrays from any candidate file in ``raw_dir``.
 
     Each candidate file is expected to deserialise to a JSON array of
@@ -1059,6 +1128,7 @@ def _read_rows_from_json(raw_dir: Path, candidates: tuple[str, ...]) -> list[dic
         if isinstance(payload, list):
             for item in payload:
                 if isinstance(item, dict):
+                    item.setdefault("__platform", platform)
                     rows.append(item)
         elif isinstance(payload, dict):
             # Some MediaCrawler versions wrap the array under a top-
@@ -1069,6 +1139,7 @@ def _read_rows_from_json(raw_dir: Path, candidates: tuple[str, ...]) -> list[dic
                 if isinstance(inner, list):
                     for item in inner:
                         if isinstance(item, dict):
+                            item.setdefault("__platform", platform)
                             rows.append(item)
                     break
     return rows
@@ -1157,6 +1228,44 @@ def _filter_subcomments_by_hot_cap(
     return top_level + capped_subs
 
 
+def _filter_comments_for_effective_notes(
+    raw_comments: list[dict],
+    effective_notes: list[dict],
+) -> list[dict]:
+    """Keep only comments whose note and parent comment will exist.
+
+    MediaCrawler's SQLite database is cumulative, while each task only
+    imports the capped ``effective_notes`` subset. Comments for notes
+    outside that subset would violate ``comments.note_id``. Hot replies
+    whose parent comment is absent would also violate the self-FK on
+    ``comments.parent_comment_id``.
+    """
+    note_ids: set[str] = set()
+    for raw_note in effective_notes:
+        note = _normalise_note_row(-1, raw_note)
+        if note is not None:
+            note_ids.add(note["note_id"])
+
+    if not note_ids:
+        return []
+
+    eligible: list[tuple[dict, dict[str, Any]]] = []
+    comment_ids: set[str] = set()
+    for raw_comment in raw_comments:
+        comment = _normalise_comment_row(raw_comment)
+        if comment is None or comment["note_id"] not in note_ids:
+            continue
+        eligible.append((raw_comment, comment))
+        comment_ids.add(comment["comment_id"])
+
+    return [
+        raw_comment
+        for raw_comment, comment in eligible
+        if comment["parent_comment_id"] is None
+        or comment["parent_comment_id"] in comment_ids
+    ]
+
+
 def _coerce_like_count(value: Any) -> int:
     """Coerce ``like_count`` for the per-note sort key.
 
@@ -1177,7 +1286,76 @@ def _coerce_like_count(value: Any) -> int:
             return 0
 
 
-async def _read_mc_output_impl(raw_dir: Path) -> tuple[list[dict], list[dict]]:
+def _coerce_timestamp_ms(value: Any) -> int:
+    if value is None or value == "":
+        return 0
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        try:
+            return int(float(value))
+        except (TypeError, ValueError):
+            return 0
+
+
+def _filter_notes_for_current_crawl(
+    raw_notes: list[dict],
+    *,
+    keyword: str | None,
+    min_timestamp_ms: int | None,
+) -> list[dict]:
+    """Filter cumulative MediaCrawler rows down to the current crawl."""
+    if not raw_notes:
+        return []
+
+    filtered = list(raw_notes)
+    expected_keyword = (keyword or "").strip()
+    if expected_keyword and any("source_keyword" in row for row in filtered):
+        filtered = [
+            row
+            for row in filtered
+            if str(row.get("source_keyword") or "").strip() == expected_keyword
+        ]
+
+    if min_timestamp_ms is not None and any(
+        "add_ts" in row or "last_modify_ts" in row for row in filtered
+    ):
+        filtered = [
+            row
+            for row in filtered
+            if max(
+                _coerce_timestamp_ms(row.get("add_ts")),
+                _coerce_timestamp_ms(row.get("last_modify_ts")),
+            )
+            >= min_timestamp_ms
+        ]
+
+    filtered.sort(
+        key=lambda row: max(
+            _coerce_timestamp_ms(row.get("add_ts")),
+            _coerce_timestamp_ms(row.get("last_modify_ts")),
+        ),
+        reverse=True,
+    )
+    return filtered
+
+
+def _redact_command(cmd: list[str]) -> list[str]:
+    """Return a log-safe copy of a subprocess command."""
+    redacted = list(cmd)
+    for index, value in enumerate(redacted[:-1]):
+        if value == "--cookies":
+            redacted[index + 1] = "***"
+    return redacted
+
+
+async def _read_mc_output_impl(
+    raw_dir: Path,
+    *,
+    platform: str = "xhs",
+    keyword: str | None = None,
+    min_timestamp_ms: int | None = None,
+) -> tuple[list[dict], list[dict]]:
     """Module-level implementation of :meth:`CrawlerService._read_mc_output`.
 
     Strategy (matches the task description verbatim):
@@ -1215,9 +1393,17 @@ async def _read_mc_output_impl(raw_dir: Path) -> tuple[list[dict], list[dict]]:
         return [], []
 
     # ---- Step 1: SQLite probes -------------------------------------
+    platform = normalise_platform(platform)
+    note_tables = _PLATFORM_NOTE_TABLES[platform]
+    comment_tables = _PLATFORM_COMMENT_TABLES[platform]
+
     raw_notes: list[dict] = []
     for name in _CONTENTS_DB_NAMES:
-        rows = _read_rows_from_sqlite(raw_dir / name, _NOTE_TABLE_WHITELIST)
+        rows = _read_rows_from_sqlite(
+            raw_dir / name,
+            note_tables,
+            platform=platform,
+        )
         if rows:
             raw_notes = rows
             logger.info(
@@ -1232,7 +1418,11 @@ async def _read_mc_output_impl(raw_dir: Path) -> tuple[list[dict], list[dict]]:
 
     raw_comments: list[dict] = []
     for name in _COMMENTS_DB_NAMES:
-        rows = _read_rows_from_sqlite(raw_dir / name, _COMMENT_TABLE_WHITELIST)
+        rows = _read_rows_from_sqlite(
+            raw_dir / name,
+            comment_tables,
+            platform=platform,
+        )
         if rows:
             raw_comments = rows
             logger.info(
@@ -1247,7 +1437,7 @@ async def _read_mc_output_impl(raw_dir: Path) -> tuple[list[dict], list[dict]]:
 
     # ---- Step 2: JSON fallback per dataset -------------------------
     if not raw_notes:
-        json_notes = _read_rows_from_json(raw_dir, _NOTE_JSON_NAMES)
+        json_notes = _read_rows_from_json(raw_dir, _NOTE_JSON_NAMES, platform=platform)
         if json_notes:
             raw_notes = json_notes
             logger.info(
@@ -1260,7 +1450,7 @@ async def _read_mc_output_impl(raw_dir: Path) -> tuple[list[dict], list[dict]]:
             )
 
     if not raw_comments:
-        json_comments = _read_rows_from_json(raw_dir, _COMMENT_JSON_NAMES)
+        json_comments = _read_rows_from_json(raw_dir, _COMMENT_JSON_NAMES, platform=platform)
         if json_comments:
             raw_comments = json_comments
             logger.info(
@@ -1273,6 +1463,26 @@ async def _read_mc_output_impl(raw_dir: Path) -> tuple[list[dict], list[dict]]:
             )
 
     # ---- Step 3: apply requirement 13.5 ---------------------------
+    if raw_notes:
+        before_count = len(raw_notes)
+        raw_notes = _filter_notes_for_current_crawl(
+            raw_notes,
+            keyword=keyword,
+            min_timestamp_ms=min_timestamp_ms,
+        )
+        if keyword or min_timestamp_ms is not None:
+            logger.info(
+                "filtered MediaCrawler notes for current crawl",
+                extra={
+                    "event": "mc_notes_filtered",
+                    "platform": platform,
+                    "keyword": keyword,
+                    "min_timestamp_ms": min_timestamp_ms,
+                    "before": before_count,
+                    "after": len(raw_notes),
+                },
+            )
+
     if raw_comments:
         raw_comments = _filter_subcomments_by_hot_cap(
             raw_comments, hot_cap=settings.HOT_COMMENT_TOP_N

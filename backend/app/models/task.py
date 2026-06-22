@@ -39,6 +39,9 @@ class Task(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     keyword: Mapped[str] = mapped_column(String, nullable=False)
+    platform: Mapped[str] = mapped_column(
+        String, nullable=False, default="xhs", server_default=text("'xhs'")
+    )
     status: Mapped[str] = mapped_column(
         String, nullable=False, default="pending", server_default=text("'pending'")
     )

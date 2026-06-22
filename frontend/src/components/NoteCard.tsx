@@ -19,6 +19,9 @@
  *   也避免 `NaN` 直接被字符串化输出。
  */
 
+import { useState } from 'react';
+
+import { proxiedMediaUrl } from '@/api/client';
 import type { NoteSummary } from '@/types/models';
 
 /** 数值 / 标题字段缺失时的统一占位符。 */
@@ -30,11 +33,9 @@ const FALLBACK_TEXT = '-';
  * 使用 data URI 而非外链资源,确保离线 / 网络异常情况下占位图始终可用,
  * 同时与需求 17.6「不抛渲染异常」相一致。
  */
-const PLACEHOLDER_COVER_DATA_URI =
-  "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'>" +
-  "<rect width='120' height='120' fill='%23e2e8f0'/>" +
-  "<text x='60' y='66' fill='%2394a3b8' font-size='14' text-anchor='middle' " +
-  "font-family='PingFang SC, Microsoft YaHei, sans-serif'>无封面</text></svg>";
+const PLACEHOLDER_COVER_DATA_URI = `data:image/svg+xml;utf8,${encodeURIComponent(
+  "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' fill='#e2e8f0'/><text x='60' y='66' fill='#94a3b8' font-size='14' text-anchor='middle' font-family='PingFang SC, Microsoft YaHei, sans-serif'>无封面</text></svg>",
+)}`;
 
 export interface NoteCardProps {
   /** 笔记摘要(对齐 `GET /api/tasks/{id}/notes` 列表项)。 */
@@ -51,12 +52,14 @@ function formatCount(value: number | null | undefined): string {
 }
 
 export function NoteCard({ note, onClick }: NoteCardProps): JSX.Element {
+  const [imageFailed, setImageFailed] = useState(false);
+
   const handleClick = (): void => {
     onClick?.(note.note_id);
   };
 
   // `cover_url` 既要兜空字符串、也要兜 null / undefined,统一用 `||`。
-  const coverSrc = note.cover_url || PLACEHOLDER_COVER_DATA_URI;
+  const coverSrc = proxiedMediaUrl(note.cover_url) || PLACEHOLDER_COVER_DATA_URI;
   // `title` 同理:空字符串、空白字符串、null 都视为缺失。
   const trimmedTitle = note.title?.trim();
   const displayTitle = trimmedTitle ? trimmedTitle : FALLBACK_TEXT;
@@ -77,9 +80,15 @@ export function NoteCard({ note, onClick }: NoteCardProps): JSX.Element {
           onError={(event) => {
             const img = event.currentTarget;
             img.onerror = null;
+            setImageFailed(true);
             img.src = PLACEHOLDER_COVER_DATA_URI;
           }}
         />
+        {imageFailed && note.cover_url && (
+          <span className="absolute bottom-2 left-2 rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-medium text-ink-500 shadow-sm">
+            图片不可访问
+          </span>
+        )}
         {note.type === 'video' && (
           <span className="absolute left-2.5 top-2.5 inline-flex items-center gap-1 rounded-full bg-ink-900/85 px-2 py-0.5 text-[10px] font-medium text-paper-50 backdrop-blur">
             ▶ video

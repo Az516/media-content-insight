@@ -44,7 +44,7 @@ export default function NoteList(): JSX.Element {
         <div>
           <div className="flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.25em] text-ink-500">
             <Link to={`/tasks/${taskId}`} className="hover:text-ink-900">
-              ← Task #{taskId}
+              ← 任务 #{taskId}
             </Link>
             <span className="text-ink-400">/</span>
             <span>素材池</span>
@@ -83,7 +83,7 @@ export default function NoteList(): JSX.Element {
           暂无素材，返回首页创建一个任务吧。
         </div>
       ) : (
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,220px),1fr))] gap-5">
           {sorted.map((note, idx) => (
             <div
               key={note.note_id}

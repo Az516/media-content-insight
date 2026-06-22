@@ -162,9 +162,15 @@ class AIAnalyzer(ABC):
     #: class itself does not blow up.
     provider: ClassVar[str] = "abstract"
 
-    def __init__(self, store: DataStore, model: str) -> None:
+    def __init__(
+        self,
+        store: DataStore,
+        model: str,
+        display_model: str | None = None,
+    ) -> None:
         self.store = store
         self.model = model
+        self.display_model = display_model or model
         # Cache the configurable knobs at construction time so that a
         # mid-flight settings reload cannot change the budget halfway
         # through :meth:`analyze`.
@@ -384,7 +390,7 @@ class AIAnalyzer(ABC):
         report = AIReport(
             task_id=task_id,
             provider=self.provider,
-            model=self.model,
+            model=self.display_model,
             prompt_version="v1",
             report_md=report_md,
         )

@@ -129,7 +129,7 @@ export function KeywordInput({
           htmlFor={keywordId}
           className="font-mono text-[10.5px] uppercase tracking-[0.22em] text-ink-500"
         >
-          Keyword · 关键词
+          关键词
         </label>
         <input
           id={keywordId}
@@ -161,7 +161,7 @@ export function KeywordInput({
           htmlFor={maxNotesId}
           className="font-mono text-[10.5px] uppercase tracking-[0.22em] text-ink-500"
         >
-          n ≤ 20
+          上限
         </label>
         <input
           id={maxNotesId}

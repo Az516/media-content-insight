@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 
 import { listTasks } from '@/api/tasks';
 import type { TaskListItem, TaskStatus } from '@/types/models';
+import { platformLabels } from '@/data/workbench';
 
 const STATUS_OPTIONS: { value: TaskStatus | 'all'; label: string }[] = [
   { value: 'all', label: '全部' },
@@ -51,8 +52,8 @@ export default function TaskManager(): JSX.Element {
     <section className="space-y-8">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <div className="font-mono text-[11px] uppercase tracking-[0.25em] text-ink-500">
-            Archive
+          <div className="text-xs font-semibold text-ink-500">
+            采集归档
           </div>
           <h2 className="mt-1 font-display text-4xl font-medium tracking-tightish text-ink-900">
             任务列表
@@ -62,7 +63,7 @@ export default function TaskManager(): JSX.Element {
           </p>
         </div>
         <Link
-          to="/"
+          to="/track-search"
           className="inline-flex items-center gap-2 rounded-xl bg-ink-900 px-5 py-2.5 text-sm font-medium text-paper-50 transition hover:bg-claret-500"
         >
           + 新建任务
@@ -96,15 +97,16 @@ export default function TaskManager(): JSX.Element {
             : '当前筛选条件下没有任务。'}
         </div>
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-rule bg-white/70 shadow-lift">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-paper-50 font-mono text-[10.5px] uppercase tracking-[0.18em] text-ink-500">
+        <div className="overflow-x-auto rounded-2xl border border-rule bg-white/70 shadow-lift">
+          <table className="min-w-[760px] w-full text-left text-sm">
+            <thead className="bg-paper-50 text-xs font-semibold text-ink-500">
               <tr>
                 <th className="px-5 py-3">#</th>
-                <th className="px-5 py-3">Keyword</th>
-                <th className="px-5 py-3">Status</th>
-                <th className="px-5 py-3 text-right">Notes</th>
-                <th className="px-5 py-3">Created</th>
+                <th className="px-5 py-3">关键词</th>
+                <th className="px-5 py-3">平台</th>
+                <th className="px-5 py-3">状态</th>
+                <th className="px-5 py-3 text-right">笔记数</th>
+                <th className="px-5 py-3">创建时间</th>
                 <th className="px-5 py-3" />
               </tr>
             </thead>
@@ -116,6 +118,9 @@ export default function TaskManager(): JSX.Element {
                   </td>
                   <td className="px-5 py-3.5 font-display text-base text-ink-900">
                     「{item.keyword || '-'}」
+                  </td>
+                  <td className="px-5 py-3.5 text-xs text-ink-500">
+                    {item.platform ? platformLabels[item.platform] : '小红书'}
                   </td>
                   <td className="px-5 py-3.5">
                     <span

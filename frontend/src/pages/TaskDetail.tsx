@@ -119,8 +119,8 @@ export default function TaskDetail(): JSX.Element {
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-3">
               <StatusBadge status={task.status} />
-              <span className="font-mono text-[11px] uppercase tracking-[0.25em] text-ink-400">
-                Task #{task.id}
+              <span className="text-sm font-semibold text-ink-400">
+                任务 #{task.id}
               </span>
             </div>
             <h2 className="mt-4 truncate font-display text-4xl font-medium tracking-tightish text-ink-900">
@@ -169,7 +169,7 @@ export default function TaskDetail(): JSX.Element {
                 if (actionDisabled) e.preventDefault();
               }}
             >
-              AI 报告
+              智能报告
             </Link>
           </div>
         </div>
@@ -188,10 +188,10 @@ export default function TaskDetail(): JSX.Element {
       </div>
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Stat label="Status" value={STATUS_LABEL[task.status] ?? task.status} />
-        <Stat label="Notes" value={task.note_count ?? 0} />
-        <Stat label="Cap" value={task.max_notes ?? 20} />
-        <Stat label="Created" value={task.created_at?.replace('T', ' ').slice(0, 16) ?? '-'} />
+        <Stat label="状态" value={STATUS_LABEL[task.status] ?? task.status} />
+        <Stat label="笔记数" value={task.note_count ?? 0} />
+        <Stat label="采集上限" value={task.max_notes ?? 20} />
+        <Stat label="创建时间" value={task.created_at?.replace('T', ' ').slice(0, 16) ?? '-'} />
       </div>
 
       {summary && task.status === 'success' && (
@@ -199,13 +199,13 @@ export default function TaskDetail(): JSX.Element {
           <div className="flex items-center justify-between border-b border-rule pb-3">
             <h3 className="font-display text-2xl text-ink-900">汇总</h3>
             <span className="font-mono text-[10.5px] uppercase tracking-[0.2em] text-ink-500">
-              Summary
+              数据汇总
             </span>
           </div>
           <div className="mt-6 grid grid-cols-1 gap-8 md:grid-cols-3">
             <div>
               <div className="font-mono text-[10.5px] uppercase tracking-[0.2em] text-ink-500">
-                Total Likes
+                总点赞数
               </div>
               <div className="mt-1 font-display text-4xl font-medium tabular-nums text-ink-900">
                 {summary.total_likes.toLocaleString()}
@@ -213,7 +213,7 @@ export default function TaskDetail(): JSX.Element {
             </div>
             <div>
               <div className="font-mono text-[10.5px] uppercase tracking-[0.2em] text-ink-500">
-                Total Comments
+                总评论数
               </div>
               <div className="mt-1 font-display text-4xl font-medium tabular-nums text-ink-900">
                 {summary.total_comments.toLocaleString()}
@@ -221,7 +221,7 @@ export default function TaskDetail(): JSX.Element {
             </div>
             <div>
               <div className="font-mono text-[10.5px] uppercase tracking-[0.2em] text-ink-500">
-                Top Authors
+                高产作者
               </div>
               <ul className="mt-2 space-y-1.5 text-sm">
                 {summary.top_authors.length === 0 && (

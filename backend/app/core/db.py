@@ -186,6 +186,54 @@ async def init_db() -> None:
         # diagnostics and a cheap sanity check.
         await conn.exec_driver_sql("PRAGMA foreign_keys=ON")
         await conn.run_sync(Base.metadata.create_all)
+        await _apply_compat_migrations(conn)
+        await _mark_interrupted_active_tasks(conn)
+
+
+async def _apply_compat_migrations(conn) -> None:
+    """Apply tiny additive migrations for existing local SQLite files.
+
+    The project uses ``create_all`` instead of a full migration framework.
+    ``create_all`` will not alter already-created tables, so new nullable or
+    defaulted columns need explicit compatibility DDL for users who already
+    have ``data/insight.db`` on disk.
+    """
+    task_columns = {
+        row[1]
+        for row in (await conn.exec_driver_sql("PRAGMA table_info(tasks)")).all()
+    }
+    if "platform" not in task_columns:
+        await conn.exec_driver_sql(
+            "ALTER TABLE tasks ADD COLUMN platform VARCHAR NOT NULL DEFAULT 'xhs'"
+        )
+
+
+async def _mark_interrupted_active_tasks(conn) -> None:
+    """Close tasks left active by a previous backend process.
+
+    Crawl jobs are driven by FastAPI background tasks. Those in-process
+    workers do not survive a backend restart, so any persisted
+    ``pending`` / ``running`` rows at startup are orphaned and would
+    otherwise keep the UI stuck on "collecting" forever.
+    """
+    result = await conn.exec_driver_sql(
+        """
+        UPDATE tasks
+        SET
+            status = 'failed',
+            error_msg = 'interrupted: 后端服务重启，采集进程已中断，请重新发起采集。',
+            finished_at = datetime('now')
+        WHERE status IN ('pending', 'running')
+        """
+    )
+    if result.rowcount and result.rowcount > 0:
+        logger.warning(
+            "marked interrupted active tasks",
+            extra={
+                "event": "mark_interrupted_active_tasks",
+                "row_count": result.rowcount,
+            },
+        )
 
 
 async def dispose_engine() -> None:

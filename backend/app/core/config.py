@@ -58,6 +58,8 @@ class Settings(BaseSettings):
     # ---- MediaCrawler integration ----
     MEDIA_CRAWLER_ROOT: Path = Field(default=Path("third_party/MediaCrawler"))
     MEDIA_CRAWLER_PYTHON: str = Field(default="")
+    MEDIA_CRAWLER_LOGIN_TYPE: str = Field(default="cookie")
+    MEDIA_CRAWLER_COOKIES: str = Field(default="")
 
     # ---- Crawl behaviour ----
     CRAWL_TIMEOUT_SECONDS: int = Field(default=600, ge=1)
@@ -68,6 +70,7 @@ class Settings(BaseSettings):
     AI_PROVIDER: str = Field(default="openai")
     LLM_API_TIMEOUT_SECONDS: int = Field(default=120, ge=1)
     MODEL_CONTEXT_LIMIT: int = Field(default=8000, ge=1)
+    MOCK_AI_REPORT: bool = Field(default=False)
 
     # Optional credentials for individual providers; intentionally untyped
     # beyond plain strings so that absent / empty values do not break startup.
@@ -102,6 +105,16 @@ class Settings(BaseSettings):
         # lower-case literals.
         return (value or "openai").strip().lower()
 
+    @field_validator("MEDIA_CRAWLER_LOGIN_TYPE")
+    @classmethod
+    def _normalise_media_crawler_login_type(cls, value: str) -> str:
+        login_type = (value or "cookie").strip().lower()
+        if login_type not in {"cookie", "qrcode", "phone"}:
+            raise ValueError(
+                "MEDIA_CRAWLER_LOGIN_TYPE must be one of: cookie, qrcode, phone."
+            )
+        return login_type
+
     @model_validator(mode="after")
     def _resolve_paths(self) -> "Settings":
         # Resolve MEDIA_CRAWLER_ROOT relative to the repository root when a
@@ -114,10 +127,19 @@ class Settings(BaseSettings):
                 (REPO_ROOT / self.MEDIA_CRAWLER_ROOT).resolve(),
             )
 
-        # Default MEDIA_CRAWLER_PYTHON to the running interpreter so that the
-        # subprocess uses a known-good Python. Users can override via env.
+        # Prefer MediaCrawler's own virtualenv when it exists. The backend's
+        # Python environment intentionally stays small, while MediaCrawler
+        # needs browser/runtime packages such as playwright.
         if not self.MEDIA_CRAWLER_PYTHON.strip():
-            object.__setattr__(self, "MEDIA_CRAWLER_PYTHON", sys.executable)
+            if sys.platform == "win32":
+                mc_python = self.MEDIA_CRAWLER_ROOT / ".venv" / "Scripts" / "python.exe"
+            else:
+                mc_python = self.MEDIA_CRAWLER_ROOT / ".venv" / "bin" / "python"
+            object.__setattr__(
+                self,
+                "MEDIA_CRAWLER_PYTHON",
+                str(mc_python) if mc_python.exists() else sys.executable,
+            )
 
         # Resolve JSON archive directory relative to repo root unless an
         # absolute path was given. We deliberately do NOT create the
@@ -152,6 +174,17 @@ class Settings(BaseSettings):
             "http://127.0.0.1:8000",
         ]
 
+    @property
+    def cors_allow_origin_regex(self) -> str:
+        """Allow browser requests from any loopback dev-server port.
+
+        Vite automatically falls forward to 5174, 5175, etc. when the
+        default port is occupied. This regex keeps the compliance boundary
+        local-only while preventing those legitimate dev ports from failing
+        CORS preflight.
+        """
+        return r"^http://(127\.0\.0\.1|localhost):\d+$"
+
     def to_safe_dict(self) -> dict[str, Any]:
         """Return a copy of the settings safe to log (no secrets).
 
@@ -159,7 +192,7 @@ class Settings(BaseSettings):
         """
         masked: dict[str, Any] = {}
         for name, value in self.model_dump().items():
-            if name.endswith("API_KEY") and value:
+            if (name.endswith("API_KEY") or name.endswith("COOKIES")) and value:
                 masked[name] = "***"
             elif isinstance(value, Path):
                 masked[name] = str(value)

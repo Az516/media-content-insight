@@ -10,11 +10,13 @@
 // ────────────────────────────────────────────────────────────────────────────
 
 export type TaskStatus = 'pending' | 'running' | 'success' | 'failed';
+export type PlatformKey = 'xhs' | 'dy' | 'ks' | 'bili' | 'wb' | 'tieba' | 'zhihu' | 'wechat';
 
 /** 任务列表 item(`GET /api/tasks` 中的单元素)。 */
 export interface TaskListItem {
   id: number;
   keyword: string;
+  platform?: PlatformKey;
   status: TaskStatus;
   note_count: number;
   started_at: string | null;
@@ -52,6 +54,7 @@ export interface AIReportSummary {
 export interface Task {
   id: number;
   keyword: string;
+  platform: PlatformKey;
   status: TaskStatus;
   note_count: number;
   max_notes: number;
@@ -172,9 +175,12 @@ export interface SentimentDistribution {
 export interface HotComment {
   comment_id: string;
   note_id: string;
+  user_id?: string | null;
   content: string | null;
   like_count: number;
   nickname: string | null;
+  create_time?: string | null;
+  is_top_hot?: 0 | 1;
 }
 
 export interface CommentInsights {
@@ -198,6 +204,72 @@ export interface AIReport {
   prompt_version: string;
   report_md: string;
   created_at: string;
+}
+
+export type AIReportChatRole = 'user' | 'assistant';
+
+export interface AIReportChatMessage {
+  role: AIReportChatRole;
+  content: string;
+}
+
+export interface AIReportChatResponse {
+  provider: AIProvider;
+  model: string;
+  message: string;
+}
+
+export interface TopicMetric {
+  label: string;
+  value: string;
+}
+
+export interface TopicRecommendation {
+  id: string;
+  title: string;
+  score: number;
+  summary: string;
+  metrics: TopicMetric[];
+  evidence: string;
+  audience: string;
+  risk: string;
+}
+
+export interface CreativeDirection {
+  id: string;
+  type: string;
+  title: string;
+  hook: string;
+  promise: string;
+  audience: string;
+  evidence: string;
+}
+
+export interface TitleCandidate {
+  text: string;
+  reason: string;
+}
+
+export interface OutlineBlock {
+  title: string;
+  points: string[];
+}
+
+export interface ContentOutline {
+  titles: TitleCandidate[];
+  outline: OutlineBlock[];
+  cover_copy: string[];
+  comment_guide: string[];
+  tags: string[];
+  evidence: string;
+}
+
+export interface ContentDraft {
+  title: string;
+  cover: string;
+  body: string;
+  tags: string[];
+  checks: string[];
 }
 
 // ────────────────────────────────────────────────────────────────────────────

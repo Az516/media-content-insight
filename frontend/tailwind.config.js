@@ -67,6 +67,10 @@ export default {
         paper: '0 1px 0 0 #E6E1D2, 0 12px 32px -16px rgba(26,26,26,0.10)',
         inset: 'inset 0 -1px 0 0 #E6E1D2',
         lift: '0 1px 0 rgba(26,26,26,0.06), 0 6px 18px -8px rgba(26,26,26,0.08)',
+        soft: '0 18px 55px -42px rgba(15, 23, 42, 0.22)',
+        panel: '0 1px 0 rgba(255,255,255,0.9) inset, 0 16px 42px -34px rgba(15, 23, 42, 0.32)',
+        sidebar: '18px 0 45px -38px rgba(15, 23, 42, 0.18)',
+        button: '0 10px 24px -16px rgba(37, 99, 235, 0.7)',
       },
       letterSpacing: {
         tightish: '-0.012em',
@@ -90,6 +94,9 @@ export default {
         'fade-up': 'fade-up 0.5s cubic-bezier(0.2, 0.65, 0.3, 1) both',
         'fade-in': 'fade-in 0.4s ease-out both',
         'pulse-dot': 'pulse-dot 1.4s ease-in-out infinite',
+      },
+      backgroundImage: {
+        app: 'linear-gradient(135deg, #eef3f8 0%, #f8fafc 42%, #eef3f8 100%)',
       },
     },
   },

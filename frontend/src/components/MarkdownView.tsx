@@ -14,7 +14,7 @@ import remarkGfm from 'remark-gfm';
 export default function MarkdownView({ content }: { content: string }): JSX.Element {
   return (
     <article
-      className="rounded-3xl border border-rule bg-white/80 px-8 py-8 shadow-paper sm:px-10
+      className="overflow-x-auto rounded-3xl border border-rule bg-white/80 px-8 py-8 shadow-paper sm:px-10
         prose prose-neutral max-w-none
         prose-headings:font-display prose-headings:tracking-tightish prose-headings:text-ink-900
         prose-h1:text-4xl prose-h1:font-medium prose-h1:mb-6

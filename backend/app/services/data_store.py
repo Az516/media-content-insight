@@ -80,6 +80,114 @@ def _as_json_text(value: Any) -> str | None:
         return _as_str_or_none(value)
 
 
+def _first_url_from_media_list(value: Any) -> str | None:
+    """Extract the first usable media URL from MediaCrawler list fields."""
+    if value is None:
+        return None
+
+    items: list[Any]
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return None
+        if text.startswith("["):
+            try:
+                parsed = json.loads(text)
+            except json.JSONDecodeError:
+                parsed = None
+            items = parsed if isinstance(parsed, list) else [text]
+        else:
+            items = [part.strip() for part in text.split(",")]
+    elif isinstance(value, list):
+        items = value
+    else:
+        items = [value]
+
+    for item in items:
+        if isinstance(item, str):
+            url = _as_str_or_none(item.strip().strip("\"'"))
+            if url:
+                return url
+        elif isinstance(item, Mapping):
+            for key in ("url", "src", "image_url", "cover_url", "original", "thumbnail"):
+                url = _as_str_or_none(item.get(key))
+                if url:
+                    return url
+    return None
+
+
+def _normalise_platform(raw: Mapping[str, Any]) -> str:
+    return _as_str_or_none(raw.get("__platform") or raw.get("platform")) or "xhs"
+
+
+def _platform_scoped_id(platform: str, value: Any) -> str | None:
+    raw_id = _as_str_or_none(value)
+    if not raw_id:
+        return None
+    if platform == "xhs" or raw_id.startswith(f"{platform}:"):
+        return raw_id
+    return f"{platform}:{raw_id}"
+
+
+def _extract_note_source_id(raw: Mapping[str, Any]) -> Any:
+    return (
+        raw.get("note_id")
+        or raw.get("aweme_id")
+        or raw.get("video_id")
+        or raw.get("content_id")
+        or raw.get("dynamic_id")
+        or raw.get("id")
+    )
+
+
+def _extract_cover_url(raw: Mapping[str, Any]) -> str | None:
+    for key in ("cover_url", "video_cover_url", "thumbnail_url"):
+        url = _as_str_or_none(raw.get(key))
+        if url:
+            return url
+    return _first_url_from_media_list(
+        raw.get("image_list") or raw.get("images_list") or raw.get("images")
+    )
+
+
+def _extract_title(raw: Mapping[str, Any]) -> str | None:
+    if "title" in raw:
+        value = raw.get("title")
+        return None if value is None else str(value)
+    return _as_str_or_none(
+        raw.get("content")
+        or raw.get("content_text")
+        or raw.get("desc")
+    )
+
+
+def _extract_desc(raw: Mapping[str, Any]) -> str | None:
+    if "desc" in raw:
+        value = raw.get("desc")
+        return None if value is None else str(value)
+    return _as_str_or_none(
+        raw.get("content")
+        or raw.get("content_text")
+        or raw.get("title")
+    )
+
+
+def _extract_note_type(platform: str, raw: Mapping[str, Any]) -> str | None:
+    note_type = _as_str_or_none(
+        raw.get("type")
+        or raw.get("video_type")
+        or raw.get("aweme_type")
+        or raw.get("content_type")
+    )
+    if platform in {"dy", "bili", "ks"}:
+        return "video"
+    if note_type:
+        note_type = note_type.lower()
+        if note_type in {"normal", "video"}:
+            return note_type
+    return None
+
+
 def _normalise_parent_comment_id(value: Any) -> str | None:
     if value is None:
         return None
@@ -92,31 +200,49 @@ def _normalise_parent_comment_id(value: Any) -> str | None:
 
 
 def _normalise_note_row(task_id: int, raw: Mapping[str, Any]) -> dict[str, Any] | None:
-    note_id = _as_str_or_none(raw.get("note_id") or raw.get("id"))
+    platform = _normalise_platform(raw)
+    note_id = _platform_scoped_id(platform, _extract_note_source_id(raw))
     if not note_id:
         return None
-    note_type = _as_str_or_none(raw.get("type"))
-    if note_type:
-        note_type = note_type.lower()
-        if note_type not in {"normal", "video"}:
-            note_type = None
     return {
         "note_id": note_id,
         "task_id": task_id,
-        "title": _as_str_or_none(raw.get("title")),
-        "desc": _as_str_or_none(raw.get("desc")),
-        "type": note_type,
-        "cover_url": _as_str_or_none(raw.get("cover_url")),
-        "video_url": _as_str_or_none(raw.get("video_url")),
-        "liked_count": _coerce_int(raw.get("liked_count")),
-        "collected_count": _coerce_int(raw.get("collected_count")),
-        "comment_count": _coerce_int(raw.get("comment_count")),
-        "share_count": _coerce_int(raw.get("share_count")),
+        "title": _extract_title(raw),
+        "desc": _extract_desc(raw),
+        "type": _extract_note_type(platform, raw),
+        "cover_url": _extract_cover_url(raw),
+        "video_url": _as_str_or_none(
+            raw.get("video_url")
+            or raw.get("video_download_url")
+            or raw.get("video_play_url")
+            or raw.get("aweme_url")
+            or raw.get("content_url")
+            or raw.get("note_url")
+        ),
+        "liked_count": _coerce_int(raw.get("liked_count") or raw.get("voteup_count")),
+        "collected_count": _coerce_int(
+            raw.get("collected_count") or raw.get("video_favorite_count")
+        ),
+        "comment_count": _coerce_int(
+            raw.get("comment_count")
+            or raw.get("comments_count")
+            or raw.get("video_comment")
+            or raw.get("total_replay_num")
+        ),
+        "share_count": _coerce_int(raw.get("share_count") or raw.get("shared_count") or raw.get("video_share_count")),
         "author_user_id": _as_str_or_none(
-            raw.get("author_user_id") or raw.get("user_id")
+            raw.get("author_user_id")
+            or raw.get("user_id")
+            or raw.get("user_url_token")
+            or raw.get("user_link")
         ),
         "publish_time": _as_str_or_none(
-            raw.get("publish_time") or raw.get("time") or raw.get("last_update_time")
+            raw.get("publish_time")
+            or raw.get("time")
+            or raw.get("create_time")
+            or raw.get("created_time")
+            or raw.get("create_date_time")
+            or raw.get("last_update_time")
         ),
         "ip_location": _as_str_or_none(raw.get("ip_location")),
         "tag_list": _as_json_text(raw.get("tag_list")),
@@ -125,20 +251,30 @@ def _normalise_note_row(task_id: int, raw: Mapping[str, Any]) -> dict[str, Any] 
 
 
 def _normalise_comment_row(raw: Mapping[str, Any]) -> dict[str, Any] | None:
-    comment_id = _as_str_or_none(raw.get("comment_id") or raw.get("id"))
-    note_id = _as_str_or_none(raw.get("note_id"))
+    platform = _normalise_platform(raw)
+    comment_id = _platform_scoped_id(platform, raw.get("comment_id") or raw.get("id"))
+    note_id = _platform_scoped_id(
+        platform,
+        raw.get("note_id")
+        or raw.get("aweme_id")
+        or raw.get("video_id")
+        or raw.get("content_id"),
+    )
     if not comment_id or not note_id:
         return None
+    parent_comment_id = _normalise_parent_comment_id(raw.get("parent_comment_id"))
+    if parent_comment_id and platform != "xhs":
+        parent_comment_id = _platform_scoped_id(platform, parent_comment_id)
     return {
         "comment_id": comment_id,
         "note_id": note_id,
-        "parent_comment_id": _normalise_parent_comment_id(raw.get("parent_comment_id")),
-        "user_id": _as_str_or_none(raw.get("user_id")),
-        "nickname": _as_str_or_none(raw.get("nickname")),
+        "parent_comment_id": parent_comment_id,
+        "user_id": _as_str_or_none(raw.get("user_id") or raw.get("user_link")),
+        "nickname": _as_str_or_none(raw.get("nickname") or raw.get("user_nickname")),
         "content": _as_str_or_none(raw.get("content")),
-        "like_count": _coerce_int(raw.get("like_count")),
+        "like_count": _coerce_int(raw.get("like_count") or raw.get("comment_like_count")),
         "sub_comment_count": _coerce_int(raw.get("sub_comment_count")),
-        "create_time": _as_str_or_none(raw.get("create_time") or raw.get("time")),
+        "create_time": _as_str_or_none(raw.get("create_time") or raw.get("publish_time") or raw.get("time")),
         "is_top_hot": _coerce_bool_int(raw.get("is_top_hot")),
     }
 
@@ -158,6 +294,7 @@ class DataStore:
         async with self._session_maker() as session:
             task = await session.get(Task, task_id)
             assert task is not None
+            assert task.status == "pending"
             task.status = "running"
             task.started_at = _utc_now_iso()
             await session.commit()
@@ -166,6 +303,7 @@ class DataStore:
         async with self._session_maker() as session:
             task = await session.get(Task, task_id)
             assert task is not None
+            assert task.status == "running"
             task.status = "success"
             task.note_count = note_count
             task.json_path = json_path
@@ -177,6 +315,7 @@ class DataStore:
         async with self._session_maker() as session:
             task = await session.get(Task, task_id)
             assert task is not None
+            assert task.status in {"pending", "running"}
             task.status = "failed"
             task.error_msg = error_msg[:1000]
             task.finished_at = _utc_now_iso()
@@ -191,8 +330,8 @@ class DataStore:
                 continue
             rows[user_id] = {
                 "user_id": user_id,
-                "nickname": _as_str_or_none(row.get("nickname")),
-                "avatar": _as_str_or_none(row.get("avatar")),
+                "nickname": _as_str_or_none(row.get("nickname") or row.get("user_nickname")),
+                "avatar": _as_str_or_none(row.get("avatar") or row.get("user_avatar")),
                 "gender": _as_str_or_none(row.get("gender")),
                 "ip_location": _as_str_or_none(row.get("ip_location")),
                 "fans_count": _coerce_int(row.get("fans_count") or row.get("fans")),

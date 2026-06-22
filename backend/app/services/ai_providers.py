@@ -281,10 +281,25 @@ def supported_providers() -> tuple[str, ...]:
     return tuple(_PROVIDER_REGISTRY.keys())
 
 
+def provider_config_error(provider: str) -> str | None:
+    """Return a user-actionable provider configuration error, if any."""
+    tag = (provider or "").strip().lower()
+    if settings.MOCK_AI_REPORT:
+        return None
+    if tag == "deepseek" and not settings.DEEPSEEK_API_KEY.strip():
+        return "DeepSeek API Key 未配置,请在 backend/.env 设置 DEEPSEEK_API_KEY 后重启后端。"
+    if tag == "openai" and not settings.OPENAI_API_KEY.strip():
+        return "OpenAI API Key 未配置,请在 backend/.env 设置 OPENAI_API_KEY 后重启后端。"
+    if tag == "gemini" and not settings.GEMINI_API_KEY.strip():
+        return "Gemini API Key 未配置,请在 backend/.env 设置 GEMINI_API_KEY 后重启后端。"
+    return None
+
+
 def make_analyzer(
     provider: str | None,
     model: str,
     store: "DataStore",
+    display_model: str | None = None,
 ) -> AIAnalyzer:
     """Construct an :class:`AIAnalyzer` for ``provider`` / ``model``.
 
@@ -331,7 +346,7 @@ def make_analyzer(
             "model": model,
         },
     )
-    return cls(store=store, model=model)
+    return cls(store=store, model=model, display_model=display_model)
 
 
 __all__ = [
@@ -339,5 +354,6 @@ __all__ = [
     "GeminiAnalyzer",
     "OpenAIAnalyzer",
     "make_analyzer",
+    "provider_config_error",
     "supported_providers",
 ]

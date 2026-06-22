@@ -73,7 +73,7 @@ export default function Insights(): JSX.Element {
       <div>
         <div className="flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.25em] text-ink-500">
           <Link to={`/tasks/${taskId}`} className="hover:text-ink-900">
-            ← Task #{taskId}
+            ← 任务 #{taskId}
           </Link>
           <span className="text-ink-400">/</span>
           <span>评论洞察</span>
@@ -95,7 +95,7 @@ export default function Insights(): JSX.Element {
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <div className="rounded-2xl border border-rule bg-white/70 p-5 shadow-lift">
               <div className="font-mono text-[10.5px] uppercase tracking-[0.2em] text-ink-500">
-                Total
+                评论总数
               </div>
               <div className="mt-2 font-display text-4xl font-medium tabular-nums text-ink-900">
                 {data.total_comments.toLocaleString()}
@@ -104,7 +104,7 @@ export default function Insights(): JSX.Element {
             </div>
             <div className="rounded-2xl border border-rule bg-white/70 p-5 shadow-lift md:col-span-2 lg:col-span-3">
               <div className="font-mono text-[10.5px] uppercase tracking-[0.2em] text-ink-500">
-                Sentiment · 情感分布
+                情感分布
               </div>
               <div className="mt-4">
                 <SentimentBar sentiment={data.sentiment} />
@@ -117,7 +117,7 @@ export default function Insights(): JSX.Element {
               <div className="flex items-center justify-between">
                 <h3 className="font-display text-xl text-ink-900">高频词</h3>
                 <span className="font-mono text-[10.5px] uppercase tracking-[0.2em] text-ink-500">
-                  Top {data.top_keywords?.length ?? 0}
+                  前 {data.top_keywords?.length ?? 0} 个
                 </span>
               </div>
               {data.top_keywords?.length ? (
@@ -150,7 +150,7 @@ export default function Insights(): JSX.Element {
               <div className="flex items-center justify-between">
                 <h3 className="font-display text-xl text-ink-900">热门评论</h3>
                 <span className="font-mono text-[10.5px] uppercase tracking-[0.2em] text-ink-500">
-                  Top {data.top_hot_comments?.length ?? 0}
+                  前 {data.top_hot_comments?.length ?? 0} 条
                 </span>
               </div>
               {data.top_hot_comments?.length ? (

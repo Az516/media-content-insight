@@ -5,7 +5,7 @@
 html,
 body,
 #root {
-  height: 100%;
+  min-height: 100%;
 }
 
 html {
@@ -22,19 +22,12 @@ body {
     system-ui,
     -apple-system,
     sans-serif;
-  background-color: #fcfbf6;
+  background-color: #eef3f8;
   background-image:
-    radial-gradient(at 100% 0%, rgba(166, 45, 45, 0.05) 0px, transparent 55%),
-    radial-gradient(at 0% 100%, rgba(26, 26, 26, 0.04) 0px, transparent 55%),
-    repeating-linear-gradient(
-      0deg,
-      rgba(26, 26, 26, 0.012) 0px,
-      rgba(26, 26, 26, 0.012) 1px,
-      transparent 1px,
-      transparent 28px
-    );
+    linear-gradient(135deg, rgba(226, 232, 240, 0.9) 0%, rgba(255, 255, 255, 0) 42%),
+    linear-gradient(315deg, rgba(203, 213, 225, 0.5) 0%, rgba(255, 255, 255, 0) 48%);
   background-attachment: fixed;
-  color: #1a1a1a;
+  color: #0f172a;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   font-feature-settings:
@@ -43,30 +36,27 @@ body {
     'lnum' on;
 }
 
-::selection {
-  background: rgba(166, 45, 45, 0.18);
-  color: #1a1a1a;
+button,
+input,
+textarea {
+  font: inherit;
 }
 
-/* Tabular figures for numeric callouts. Applied via the utility class
-   below so individual elements opt-in rather than the whole document. */
+::selection {
+  background: rgba(20, 184, 166, 0.18);
+  color: #0f172a;
+}
+
 .tabular-nums {
   font-variant-numeric: tabular-nums;
 }
 
-/* Display headings rely on Fraunces optical sizing. */
-.font-display {
-  font-feature-settings:
-    'ss01' on,
-    'cv11' on,
-    'liga' on;
-  font-variation-settings:
-    'opsz' 96,
-    'SOFT' 50;
+.app-measure {
+  width: min(100%, 1440px);
+  margin-inline: auto;
+  padding-inline: clamp(16px, 2.4vw, 40px);
 }
 
-/* Subtle entrance ramp used by the App shell so route transitions are
-   visually anchored even before any JS animation library kicks in. */
 .page-enter {
   animation: page-enter 0.35s cubic-bezier(0.2, 0.65, 0.3, 1) both;
 }
@@ -82,11 +72,8 @@ body {
   }
 }
 
-/* Dark mode — kept for the ThemeToggle. Switches to ink paper. */
 html.dark body {
-  background-color: #131210;
-  background-image:
-    radial-gradient(at 100% 0%, rgba(193, 59, 59, 0.10) 0px, transparent 55%),
-    radial-gradient(at 0% 100%, rgba(255, 255, 255, 0.04) 0px, transparent 55%);
-  color: #e8e5dc;
+  background-color: #0f172a;
+  background-image: none;
+  color: #e2e8f0;
 }

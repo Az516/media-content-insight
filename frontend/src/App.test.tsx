@@ -4,44 +4,54 @@ import { describe, expect, it } from 'vitest';
 
 import App from './App';
 
-describe('App router scaffolding (任务 1.5)', () => {
-  it('在 `/` 渲染 Home 占位组件', () => {
+describe('App router scaffolding', () => {
+  it('renders the workspace at `/`', () => {
     render(
       <MemoryRouter initialEntries={['/']}>
         <App />
       </MemoryRouter>,
     );
-    expect(screen.getByTestId('placeholder-Home')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '真实采集工作台' })).toBeInTheDocument();
   });
 
-  it('在 `/tasks/:taskId` 渲染 TaskDetail 并解析路由参数', () => {
+  it('renders the track search page', () => {
     render(
-      <MemoryRouter initialEntries={['/tasks/42']}>
+      <MemoryRouter initialEntries={['/track-search']}>
         <App />
       </MemoryRouter>,
     );
-    const node = screen.getByTestId('placeholder-TaskDetail');
-    expect(node).toBeInTheDocument();
-    expect(node).toHaveTextContent('42');
+    expect(screen.getByRole('heading', { name: '关键词采集' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '当前采集任务' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /抖音/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /公众号/ })).toBeDisabled();
   });
 
-  it('在 `/tasks/:taskId/notes/:noteId` 同时解析 taskId / noteId', () => {
-    render(
-      <MemoryRouter initialEntries={['/tasks/7/notes/abc123']}>
-        <App />
-      </MemoryRouter>,
-    );
-    const node = screen.getByTestId('placeholder-NoteDetail');
-    expect(node).toHaveTextContent('7');
-    expect(node).toHaveTextContent('abc123');
+  it('renders all redesigned primary routes', () => {
+    const routes = [
+      ['/opportunities', '真实内容素材'],
+      ['/draft-review', '触达草稿审核'],
+      ['/leads', '真实热门评论'],
+      ['/reports', '真实报告'],
+      ['/integrations', '真实数据连接状态'],
+    ];
+
+    routes.forEach(([path, title]) => {
+      const { unmount } = render(
+        <MemoryRouter initialEntries={[path]}>
+          <App />
+        </MemoryRouter>,
+      );
+      expect(screen.getByRole('heading', { name: title })).toBeInTheDocument();
+      unmount();
+    });
   });
 
-  it('未注册路径走通配 `*` 兜底,渲染 NotFound 占位', () => {
+  it('redirects unknown routes back to the workspace', () => {
     render(
       <MemoryRouter initialEntries={['/this/does/not/exist']}>
         <App />
       </MemoryRouter>,
     );
-    expect(screen.getByTestId('placeholder-NotFound')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '真实采集工作台' })).toBeInTheDocument();
   });
 });
