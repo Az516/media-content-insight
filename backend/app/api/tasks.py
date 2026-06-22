@@ -22,6 +22,8 @@ KEYWORD_MIN_LEN = 1
 KEYWORD_MAX_LEN = 50
 MAX_NOTES_MIN = 1
 MAX_NOTES_MAX = 20
+MAX_COMMENTS_PER_NOTE_MIN = 1
+MAX_COMMENTS_PER_NOTE_MAX = 100
 
 
 async def _run_real_crawl(
@@ -30,10 +32,17 @@ async def _run_real_crawl(
     platform: str,
     keyword: str,
     max_notes: int,
+    max_comments_per_note: int,
 ) -> None:
     """Background worker for the real MediaCrawler chain."""
     try:
-        await crawler.run_keyword_search(task_id, platform, keyword, max_notes)
+        await crawler.run_keyword_search(
+            task_id,
+            platform,
+            keyword,
+            max_notes,
+            max_comments_per_note,
+        )
     except Exception:
         # run_keyword_search already writes terminal task state;
         # we only keep the traceback for diagnostics.
@@ -75,6 +84,26 @@ async def create_task(
         raise HTTPException(status_code=422, detail=error_detail("OVER_LIMIT", "max_notes invalid", {"max_notes": request.get("max_notes")}))
     if not (MAX_NOTES_MIN <= max_notes <= MAX_NOTES_MAX):
         raise HTTPException(status_code=422, detail=error_detail("OVER_LIMIT", "max_notes invalid", {"max_notes": max_notes}))
+    try:
+        max_comments_per_note = int(request.get("max_comments_per_note", 20))
+    except Exception:
+        raise HTTPException(
+            status_code=422,
+            detail=error_detail(
+                "OVER_LIMIT",
+                "max_comments_per_note invalid",
+                {"max_comments_per_note": request.get("max_comments_per_note")},
+            ),
+        )
+    if not (MAX_COMMENTS_PER_NOTE_MIN <= max_comments_per_note <= MAX_COMMENTS_PER_NOTE_MAX):
+        raise HTTPException(
+            status_code=422,
+            detail=error_detail(
+                "OVER_LIMIT",
+                "max_comments_per_note invalid",
+                {"max_comments_per_note": max_comments_per_note},
+            ),
+        )
 
     try:
         async with store.session() as session:
@@ -100,7 +129,13 @@ async def create_task(
                     ),
                 )
 
-            task = Task(keyword=keyword, platform=platform, status="pending", max_notes=max_notes)
+            task = Task(
+                keyword=keyword,
+                platform=platform,
+                status="pending",
+                max_notes=max_notes,
+                max_comments_per_note=max_comments_per_note,
+            )
             session.add(task)
             await session.flush()
             task_id = int(task.id)
@@ -109,10 +144,24 @@ async def create_task(
     except (DBAPIError, SQLAlchemyError):
         raise HTTPException(status_code=500, detail=error_detail("INTERNAL_ERROR", "database error"))
 
-    background_tasks.add_task(_run_real_crawl, crawler, task_id, platform, keyword, max_notes)
+    background_tasks.add_task(
+        _run_real_crawl,
+        crawler,
+        task_id,
+        platform,
+        keyword,
+        max_notes,
+        max_comments_per_note,
+    )
     return JSONResponse(
         status_code=202,
-        content={"task_id": task_id, "id": task_id, "platform": platform, "status": "pending"},
+        content={
+            "task_id": task_id,
+            "id": task_id,
+            "platform": platform,
+            "max_comments_per_note": max_comments_per_note,
+            "status": "pending",
+        },
     )
 
 
@@ -137,6 +186,7 @@ async def list_tasks(
                     "platform": getattr(t, "platform", "xhs"),
                     "status": t.status,
                     "note_count": t.note_count,
+                    "max_comments_per_note": getattr(t, "max_comments_per_note", 20),
                     "started_at": t.started_at,
                     "finished_at": t.finished_at,
                     "created_at": t.created_at,
@@ -179,6 +229,7 @@ async def get_task(task_id: int, store: DataStore = Depends(get_store)):
             "status": task.status,
             "note_count": task.note_count,
             "max_notes": task.max_notes,
+            "max_comments_per_note": getattr(task, "max_comments_per_note", 20),
             "started_at": task.started_at,
             "finished_at": task.finished_at,
             "error_msg": task.error_msg,

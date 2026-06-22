@@ -10,6 +10,7 @@ import type { Task, TaskStatus } from '@/types/models';
 
 const LAST_TASK_STORAGE_KEY = 'media-content-insight:last-track-task-id';
 const POLL_INTERVAL_MS = 2_000;
+const COMMENT_LIMIT_OPTIONS = [5, 20, 50, 100] as const;
 
 const STATUS_LABEL: Record<TaskStatus, string> = {
   pending: '排队中',
@@ -160,7 +161,7 @@ function CurrentTaskCard({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 border-t border-slate-200 bg-slate-50/70 md:grid-cols-4">
+      <div className="grid grid-cols-2 border-t border-slate-200 bg-slate-50/70 md:grid-cols-5">
         <div className="border-r border-slate-200 px-5 py-4">
           <div className="text-xs font-semibold text-slate-500">状态</div>
           <div className="mt-1 text-xl font-semibold text-slate-950">{STATUS_LABEL[task.status]}</div>
@@ -172,6 +173,10 @@ function CurrentTaskCard({
         <div className="border-r border-slate-200 px-5 py-4">
           <div className="text-xs font-semibold text-slate-500">采集上限</div>
           <div className="mt-1 text-xl font-semibold tabular-nums text-slate-950">{task.max_notes ?? 20}</div>
+        </div>
+        <div className="border-r border-slate-200 px-5 py-4">
+          <div className="text-xs font-semibold text-slate-500">评论/篇</div>
+          <div className="mt-1 text-xl font-semibold tabular-nums text-slate-950">{task.max_comments_per_note ?? 20}</div>
         </div>
         <div className="px-5 py-4">
           <div className="text-xs font-semibold text-slate-500">创建时间</div>
@@ -206,6 +211,7 @@ export default function TrackSearch(): JSX.Element {
   const [taskError, setTaskError] = useState<string | null>(null);
   const [taskLoading, setTaskLoading] = useState(trackedTaskId !== null);
   const [refreshNonce, setRefreshNonce] = useState(0);
+  const [maxCommentsPerNote, setMaxCommentsPerNote] = useState<number>(20);
 
   const activeOption = platformOptions.find((item) => item.key === selected);
   const canSubmit = Boolean(activeOption?.crawlerSupported) && keyword.trim().length > 0 && !isSubmitting;
@@ -267,7 +273,7 @@ export default function TrackSearch(): JSX.Element {
     setError(null);
     setIsSubmitting(true);
     try {
-      const result = await createTask(nextKeyword, 20, selected);
+      const result = await createTask(nextKeyword, 20, selected, maxCommentsPerNote);
       window.localStorage.setItem(LAST_TASK_STORAGE_KEY, String(result.task_id));
       setTrackedTaskId(result.task_id);
       setTrackedTask(null);
@@ -365,6 +371,31 @@ export default function TrackSearch(): JSX.Element {
             <div className="flex items-center justify-between gap-4">
               <span>单次最多读取</span>
               <StatusTag tone="slate">20 条</StatusTag>
+            </div>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-4">
+                <span>每篇评论上限</span>
+                <StatusTag tone="slate">{maxCommentsPerNote} 条</StatusTag>
+              </div>
+              <div className="grid grid-cols-4 gap-2">
+                {COMMENT_LIMIT_OPTIONS.map((value) => {
+                  const active = maxCommentsPerNote === value;
+                  return (
+                    <button
+                      key={value}
+                      className={`h-9 rounded-xl border text-sm font-semibold tabular-nums transition ${
+                        active
+                          ? 'border-blue-300 bg-blue-50 text-blue-700 ring-2 ring-blue-100'
+                          : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                      }`}
+                      type="button"
+                      onClick={() => setMaxCommentsPerNote(value)}
+                    >
+                      {value}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
             <div className="flex items-center justify-between gap-4">
               <span>公开内容拉取</span>

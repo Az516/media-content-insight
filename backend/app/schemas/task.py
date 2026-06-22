@@ -60,6 +60,13 @@ class TaskCreateRequest(BaseModel):
             "with the ``OVER_LIMIT`` error code."
         ),
     )
+    max_comments_per_note: int = Field(
+        default=20,
+        description=(
+            "Upper bound on first-level comments to request per ingested "
+            "note/video. Must be an integer in [1, 100]."
+        ),
+    )
 
 
 class TaskCreateResponse(BaseModel):
@@ -72,6 +79,10 @@ class TaskCreateResponse(BaseModel):
     platform: str = Field(
         default="xhs",
         description="MediaCrawler platform key used by the task.",
+    )
+    max_comments_per_note: int = Field(
+        default=20,
+        description="Per-note first-level comment cap used by the task.",
     )
     status: str = Field(
         ...,
@@ -99,6 +110,7 @@ class TaskDetailResponse(BaseModel):
     status: str
     note_count: int
     max_notes: int
+    max_comments_per_note: int = 20
     started_at: str | None = None
     finished_at: str | None = None
     error_msg: str | None = None

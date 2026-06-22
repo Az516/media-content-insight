@@ -1,0 +1,9 @@
+backend/
+third_party/
+data/
+docs/
+.kiro/
+.vscode/
+.codex-run-logs/
+docker-compose.yml
+*.md

@@ -46,6 +46,72 @@ MEDIA_PROXY_ALLOWED_SUFFIXES = (
 )
 
 
+def _as_text(value: Any) -> str | None:
+    if value is None:
+        return None
+    text = str(value).strip()
+    return text if text else None
+
+
+def _load_raw_json(note: Note) -> dict[str, Any]:
+    if not note.raw_json:
+        return {}
+    try:
+        payload = json.loads(note.raw_json)
+    except json.JSONDecodeError:
+        return {}
+    return payload if isinstance(payload, dict) else {}
+
+
+def _platform_from_note(note: Note, raw: dict[str, Any]) -> str:
+    platform = _as_text(raw.get("__platform") or raw.get("platform"))
+    if platform:
+        return platform
+    if ":" in note.note_id:
+        return note.note_id.split(":", 1)[0]
+    return "xhs"
+
+
+def _unscoped_id(note_id: str) -> str:
+    return note_id.split(":", 1)[1] if ":" in note_id else note_id
+
+
+def _extract_source_url(note: Note) -> str | None:
+    """Return the original platform page URL for a note when possible."""
+    raw = _load_raw_json(note)
+    for key in (
+        "source_url",
+        "note_url",
+        "content_url",
+        "aweme_url",
+        "share_url",
+        "url",
+        "video_url",
+    ):
+        url = _as_text(raw.get(key))
+        if url and url.startswith(("http://", "https://")):
+            return url
+
+    platform = _platform_from_note(note, raw)
+    source_id = _unscoped_id(note.note_id)
+    if platform == "xhs":
+        return f"https://www.xiaohongshu.com/explore/{source_id}"
+    if platform == "dy":
+        return f"https://www.douyin.com/video/{source_id}"
+    if platform == "bili":
+        bvid = _as_text(raw.get("bvid") or raw.get("video_id"))
+        return f"https://www.bilibili.com/video/{bvid or source_id}"
+    if platform == "tieba":
+        return f"https://tieba.baidu.com/p/{source_id}"
+    if platform == "zhihu":
+        return _as_text(raw.get("content_url"))
+    if platform == "wb":
+        return _as_text(raw.get("note_url") or raw.get("mblog_url"))
+    if platform == "ks":
+        return _as_text(raw.get("photo_url") or raw.get("video_url"))
+    return None
+
+
 @router.get("/media/proxy")
 async def proxy_media(url: str = Query(..., min_length=8, max_length=2048)) -> Response:
     parsed = urlparse(url)
@@ -162,6 +228,7 @@ async def get_note_detail(note_id: str, store: DataStore = Depends(get_store)):
                 type=note.type,
                 cover_url=note.cover_url,
                 video_url=note.video_url,
+                source_url=_extract_source_url(note),
                 liked_count=int(note.liked_count or 0),
                 collected_count=int(note.collected_count or 0),
                 comment_count=int(note.comment_count or 0),

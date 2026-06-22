@@ -51,6 +51,9 @@ class Task(Base):
     max_notes: Mapped[int] = mapped_column(
         Integer, nullable=False, default=20, server_default=text("20")
     )
+    max_comments_per_note: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=20, server_default=text("20")
+    )
     started_at: Mapped[str | None] = mapped_column(String, nullable=True)
     finished_at: Mapped[str | None] = mapped_column(String, nullable=True)
     error_msg: Mapped[str | None] = mapped_column(Text, nullable=True)

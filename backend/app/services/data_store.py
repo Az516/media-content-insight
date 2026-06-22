@@ -188,6 +188,17 @@ def _extract_note_type(platform: str, raw: Mapping[str, Any]) -> str | None:
     return None
 
 
+def _extract_video_url(raw: Mapping[str, Any]) -> str | None:
+    """Return a direct playable video URL, not a platform page URL."""
+    return _as_str_or_none(
+        raw.get("video_url")
+        or raw.get("video_download_url")
+        or raw.get("video_play_url")
+        or raw.get("video_addr")
+        or raw.get("play_url")
+    )
+
+
 def _normalise_parent_comment_id(value: Any) -> str | None:
     if value is None:
         return None
@@ -211,14 +222,7 @@ def _normalise_note_row(task_id: int, raw: Mapping[str, Any]) -> dict[str, Any] 
         "desc": _extract_desc(raw),
         "type": _extract_note_type(platform, raw),
         "cover_url": _extract_cover_url(raw),
-        "video_url": _as_str_or_none(
-            raw.get("video_url")
-            or raw.get("video_download_url")
-            or raw.get("video_play_url")
-            or raw.get("aweme_url")
-            or raw.get("content_url")
-            or raw.get("note_url")
-        ),
+        "video_url": _extract_video_url(raw),
         "liked_count": _coerce_int(raw.get("liked_count") or raw.get("voteup_count")),
         "collected_count": _coerce_int(
             raw.get("collected_count") or raw.get("video_favorite_count")

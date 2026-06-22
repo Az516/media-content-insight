@@ -12,6 +12,8 @@ from app.services.crawler_service import (
     normalise_platform,
 )
 from app.services.data_store import _normalise_comment_row, _normalise_note_row
+from app.api.notes import _extract_source_url
+from app.models import Note
 
 
 def test_xhs_image_list_backfills_cover_url() -> None:
@@ -28,6 +30,49 @@ def test_xhs_image_list_backfills_cover_url() -> None:
     assert row is not None
     assert row["note_id"] == "abc"
     assert row["cover_url"] == "https://cdn.example.com/a.webp"
+
+
+def test_note_page_url_is_not_treated_as_playable_video() -> None:
+    row = _normalise_note_row(
+        28,
+        {
+            "__platform": "xhs",
+            "note_id": "6a3361d1000000001700a00b",
+            "title": "网页链接不是视频直链",
+            "note_url": "https://www.xiaohongshu.com/explore/6a3361d1000000001700a00b",
+        },
+    )
+
+    assert row is not None
+    assert row["video_url"] is None
+
+
+def test_xhs_note_url_is_exposed_as_source_url() -> None:
+    note = Note(
+        note_id="6a3361d1000000001700a00b",
+        task_id=28,
+        raw_json='{"__platform":"xhs","note_url":"https://www.xiaohongshu.com/explore/6a3361d1000000001700a00b"}',
+    )
+
+    assert (
+        _extract_source_url(note)
+        == "https://www.xiaohongshu.com/explore/6a3361d1000000001700a00b"
+    )
+
+
+def test_direct_video_fields_are_preserved() -> None:
+    row = _normalise_note_row(
+        1,
+        {
+            "__platform": "xhs",
+            "note_id": "video-note",
+            "title": "视频直链",
+            "video_play_url": "https://sns-video-qc.xhscdn.com/video.mp4",
+        },
+    )
+
+    assert row is not None
+    assert row["video_url"] == "https://sns-video-qc.xhscdn.com/video.mp4"
 
 
 def test_non_xhs_ids_are_platform_scoped() -> None:

@@ -206,6 +206,19 @@ async def _apply_compat_migrations(conn) -> None:
         await conn.exec_driver_sql(
             "ALTER TABLE tasks ADD COLUMN platform VARCHAR NOT NULL DEFAULT 'xhs'"
         )
+    if "max_comments_per_note" not in task_columns:
+        await conn.exec_driver_sql(
+            "ALTER TABLE tasks ADD COLUMN max_comments_per_note INTEGER NOT NULL DEFAULT 20"
+        )
+
+    await conn.exec_driver_sql(
+        """
+        UPDATE notes
+        SET video_url = NULL
+        WHERE video_url LIKE 'https://www.xiaohongshu.com/%'
+           OR video_url LIKE 'http://www.xiaohongshu.com/%'
+        """
+    )
 
 
 async def _mark_interrupted_active_tasks(conn) -> None:

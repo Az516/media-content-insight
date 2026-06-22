@@ -55,6 +55,8 @@ frontend/pnpm-debug.log*
 *.swo
 .DS_Store
 Thumbs.db
+.codex-run-logs/
+.vercel/
 
 # ---- 编辑器与 IDE ----
 .idea/

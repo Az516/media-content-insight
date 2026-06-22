@@ -243,7 +243,11 @@ class CrawlerService:
     # ------------------------------------------------------------------
 
     async def _invoke_subprocess(
-        self, platform: str, keyword: str, max_notes: int
+        self,
+        platform: str,
+        keyword: str,
+        max_notes: int,
+        max_comments_per_note: int,
     ) -> SubprocessOutcome:
         """Launch the MediaCrawler subprocess and wait for it to finish.
 
@@ -352,7 +356,7 @@ class CrawlerService:
             "--get_sub_comment", "yes",
             # Keep crawl latency bounded so the task can reach a
             # terminal state quickly in local-dev runs.
-            "--max_comments_count_singlenotes", "5",
+            "--max_comments_count_singlenotes", str(max_comments_per_note),
             "--max_concurrency_num", "2",
         ]
         if settings.MEDIA_CRAWLER_COOKIES.strip():
@@ -520,6 +524,7 @@ class CrawlerService:
         platform: str,
         keyword: str,
         max_notes: int = 20,
+        max_comments_per_note: int = 20,
     ) -> CrawlResult:
         """Drive the full ``pending → success | failed`` task lifecycle.
 
@@ -603,7 +608,12 @@ class CrawlerService:
             # which is caught below; ``asyncio.TimeoutError`` from
             # ``asyncio.wait_for`` is handled by its dedicated
             # except branch.
-            outcome = await self._invoke_subprocess(platform, keyword, max_notes)
+            outcome = await self._invoke_subprocess(
+                platform,
+                keyword,
+                max_notes,
+                max_comments_per_note,
+            )
 
             # Step 2b: translate non-zero exits into the right
             # exception subclass. A clean exit (returncode == 0)

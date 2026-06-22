@@ -2,9 +2,141 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
 import { getNote } from '@/api/tasks';
-import { extractApiError } from '@/api/client';
+import { extractApiError, proxiedMediaUrl } from '@/api/client';
 import CommentTree from '@/components/CommentTree';
-import type { NoteDetailResponse } from '@/types/models';
+import type { Author, NoteDetailResponse } from '@/types/models';
+
+function isPlayableVideoUrl(value: string | null | undefined): boolean {
+  if (!value) return false;
+  try {
+    const url = new URL(value);
+    if (url.hostname.endsWith('xiaohongshu.com')) return false;
+  } catch {
+    return false;
+  }
+  return true;
+}
+
+function MediaPreview({
+  coverUrl,
+  videoUrl,
+  title,
+}: {
+  coverUrl: string | null;
+  videoUrl: string | null;
+  title: string | null;
+}): JSX.Element | null {
+  const [coverFailed, setCoverFailed] = useState(false);
+  const [videoFailed, setVideoFailed] = useState(false);
+  const coverSrc = proxiedMediaUrl(coverUrl);
+  const playableVideo = isPlayableVideoUrl(videoUrl) ? proxiedMediaUrl(videoUrl) : null;
+
+  useEffect(() => {
+    setCoverFailed(false);
+    setVideoFailed(false);
+  }, [coverUrl, videoUrl]);
+
+  if (playableVideo && !videoFailed) {
+    return (
+      <video
+        controls
+        src={playableVideo}
+        poster={coverSrc ?? undefined}
+        className="aspect-video w-full rounded-2xl border border-rule bg-ink-900 object-cover shadow-lift"
+        onError={() => setVideoFailed(true)}
+      />
+    );
+  }
+
+  if (coverSrc && !coverFailed) {
+    return (
+      <img
+        src={coverSrc}
+        alt={title ?? ''}
+        className="max-h-[640px] w-full rounded-2xl border border-rule object-cover shadow-lift"
+        onError={() => setCoverFailed(true)}
+      />
+    );
+  }
+
+  return null;
+}
+
+function profileMetricUnavailable(author: Author): boolean {
+  return (author.fans_count ?? 0) === 0 && (author.follow_count ?? 0) === 0;
+}
+
+function formatProfileMetric(
+  value: number | null | undefined,
+  unavailable: boolean,
+): string {
+  if (unavailable) return '未采集';
+  return typeof value === 'number' ? value.toLocaleString() : '未采集';
+}
+
+function AuthorPanel({ author }: { author: Author }): JSX.Element {
+  const [avatarFailed, setAvatarFailed] = useState(false);
+  const avatarSrc = proxiedMediaUrl(author.avatar);
+  const unavailable = profileMetricUnavailable(author);
+  const fallbackInitial = (author.nickname || author.user_id || '?').slice(0, 1);
+
+  return (
+    <div className="rounded-2xl border border-rule bg-white/70 p-5 shadow-lift">
+      <div className="font-mono text-[10.5px] tracking-[0.2em] text-ink-500">
+        作者
+      </div>
+      <div className="mt-3 flex items-center gap-3">
+        {avatarSrc && !avatarFailed ? (
+          <img
+            src={avatarSrc}
+            alt={author.nickname ?? ''}
+            className="h-12 w-12 rounded-full border border-rule object-cover"
+            onError={() => setAvatarFailed(true)}
+          />
+        ) : (
+          <div className="flex h-12 w-12 items-center justify-center rounded-full border border-rule bg-paper-100 font-display text-claret-500">
+            {fallbackInitial}
+          </div>
+        )}
+        <div className="min-w-0">
+          <div className="truncate font-display text-base text-ink-900">
+            {author.nickname || author.user_id}
+          </div>
+          {author.ip_location && (
+            <div className="text-xs text-ink-500">{author.ip_location}</div>
+          )}
+        </div>
+      </div>
+      <div className="mt-4 grid grid-cols-2 gap-2 text-center text-xs">
+        <div className="rounded-lg bg-paper-50 px-2 py-2">
+          <div className="text-ink-500">粉丝</div>
+          <div
+            className={`mt-1 font-mono tabular-nums text-ink-900 ${
+              unavailable ? 'text-xs' : 'text-base'
+            }`}
+          >
+            {formatProfileMetric(author.fans_count, unavailable)}
+          </div>
+        </div>
+        <div className="rounded-lg bg-paper-50 px-2 py-2">
+          <div className="text-ink-500">关注</div>
+          <div
+            className={`mt-1 font-mono tabular-nums text-ink-900 ${
+              unavailable ? 'text-xs' : 'text-base'
+            }`}
+          >
+            {formatProfileMetric(author.follow_count, unavailable)}
+          </div>
+        </div>
+      </div>
+      {unavailable && (
+        <p className="mt-3 text-xs leading-relaxed text-ink-500">
+          主页指标未采集，避免用 0 作为占位。
+        </p>
+      )}
+    </div>
+  );
+}
 
 function StatBlock({
   label,
@@ -17,7 +149,7 @@ function StatBlock({
 }): JSX.Element {
   return (
     <div className="rounded-2xl border border-rule bg-white/70 px-4 py-3 shadow-lift">
-      <div className="font-mono text-[10.5px] uppercase tracking-[0.2em] text-ink-500">
+      <div className="font-mono text-[10.5px] tracking-[0.2em] text-ink-500">
         {label}
       </div>
       <div
@@ -76,31 +208,33 @@ export default function NoteDetail(): JSX.Element {
         <h2 className="mt-3 font-display text-4xl font-medium leading-tight tracking-tightish text-ink-900">
           {note.title || '无标题'}
         </h2>
-        {note.publish_time && (
-          <p className="mt-2 font-mono text-xs tabular-nums text-ink-500">
-            发布于 {note.publish_time.replace('T', ' ').slice(0, 16)}
-            {note.ip_location ? ` · ${note.ip_location}` : ''}
-          </p>
-        )}
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          {note.publish_time && (
+            <p className="font-mono text-xs tabular-nums text-ink-500">
+              发布于 {note.publish_time.replace('T', ' ').slice(0, 16)}
+              {note.ip_location ? ` · ${note.ip_location}` : ''}
+            </p>
+          )}
+          {note.source_url ? (
+            <a
+              className="inline-flex h-9 items-center justify-center rounded-xl border border-rule bg-white px-3 text-sm font-medium text-claret-500 shadow-lift transition hover:border-claret-200 hover:bg-claret-50"
+              href={note.source_url}
+              target="_blank"
+              rel="noreferrer"
+            >
+              打开原帖
+            </a>
+          ) : null}
+        </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="space-y-6">
-          {note.cover_url && note.type !== 'video' && (
-            <img
-              src={note.cover_url}
-              alt={note.title ?? ''}
-              className="w-full rounded-2xl border border-rule object-cover shadow-lift"
-            />
-          )}
-          {note.video_url && (
-            <video
-              controls
-              src={note.video_url}
-              poster={note.cover_url ?? undefined}
-              className="w-full rounded-2xl border border-rule shadow-lift"
-            />
-          )}
+          <MediaPreview
+            coverUrl={note.cover_url}
+            videoUrl={note.video_url}
+            title={note.title}
+          />
 
           <div className="rounded-2xl border border-rule bg-white/70 p-6 shadow-lift">
             <p className="whitespace-pre-line text-[15px] leading-relaxed text-ink-700">
@@ -109,61 +243,20 @@ export default function NoteDetail(): JSX.Element {
           </div>
 
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-            <StatBlock label="Likes" value={note.liked_count ?? 0} accent />
-            <StatBlock label="Collects" value={note.collected_count ?? 0} />
-            <StatBlock label="Comments" value={note.comment_count ?? 0} />
-            <StatBlock label="Shares" value={note.share_count ?? 0} />
+            <StatBlock label="点赞" value={note.liked_count ?? 0} accent />
+            <StatBlock label="收藏" value={note.collected_count ?? 0} />
+            <StatBlock label="评论" value={note.comment_count ?? 0} />
+            <StatBlock label="分享" value={note.share_count ?? 0} />
           </div>
         </div>
 
         <aside className="space-y-6">
-          {author && (
-            <div className="rounded-2xl border border-rule bg-white/70 p-5 shadow-lift">
-              <div className="font-mono text-[10.5px] uppercase tracking-[0.2em] text-ink-500">
-                Author
-              </div>
-              <div className="mt-3 flex items-center gap-3">
-                {author.avatar ? (
-                  <img
-                    src={author.avatar}
-                    alt={author.nickname ?? ''}
-                    className="h-12 w-12 rounded-full border border-rule object-cover"
-                  />
-                ) : (
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full border border-rule bg-paper-100 font-display text-claret-500">
-                    {(author.nickname || '?').slice(0, 1)}
-                  </div>
-                )}
-                <div className="min-w-0">
-                  <div className="truncate font-display text-base text-ink-900">
-                    {author.nickname || author.user_id}
-                  </div>
-                  {author.ip_location && (
-                    <div className="text-xs text-ink-500">{author.ip_location}</div>
-                  )}
-                </div>
-              </div>
-              <div className="mt-4 grid grid-cols-2 gap-2 text-center text-xs">
-                <div className="rounded-lg bg-paper-50 px-2 py-2">
-                  <div className="text-ink-500">粉丝</div>
-                  <div className="font-mono text-base tabular-nums text-ink-900">
-                    {author.fans_count ?? 0}
-                  </div>
-                </div>
-                <div className="rounded-lg bg-paper-50 px-2 py-2">
-                  <div className="text-ink-500">关注</div>
-                  <div className="font-mono text-base tabular-nums text-ink-900">
-                    {author.follow_count ?? 0}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
+          {author && <AuthorPanel author={author} />}
 
           {tagList.length > 0 && (
             <div className="rounded-2xl border border-rule bg-white/70 p-5 shadow-lift">
-              <div className="font-mono text-[10.5px] uppercase tracking-[0.2em] text-ink-500">
-                Tags
+              <div className="font-mono text-[10.5px] tracking-[0.2em] text-ink-500">
+                话题
               </div>
               <div className="mt-3 flex flex-wrap gap-1.5">
                 {tagList.map((t) => (
@@ -181,7 +274,10 @@ export default function NoteDetail(): JSX.Element {
       </div>
 
       <div className="rounded-2xl border border-rule bg-white/70 p-6 shadow-lift">
-        <h3 className="font-display text-xl text-ink-900">评论树</h3>
+        <h3 className="font-display text-xl text-ink-900">评论</h3>
+        <p className="mt-1 text-sm text-ink-500">
+          已采集 {data.comments.length.toLocaleString()} 条，平台显示 {note.comment_count.toLocaleString()} 条
+        </p>
         <div className="mt-4">
           <CommentTree comments={data.comments} />
         </div>

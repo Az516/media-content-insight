@@ -189,6 +189,14 @@ class NoteDetail(BaseModel):
             "or when the crawler did not surface a URL."
         ),
     )
+    source_url: str | None = Field(
+        default=None,
+        description=(
+            "Original platform page URL for opening the source post in "
+            "the user's browser. This is intentionally separate from "
+            "``video_url`` because platform pages are not playable media files."
+        ),
+    )
     liked_count: int = Field(
         ...,
         description="Number of likes on the note (defaults to 0 in DB).",

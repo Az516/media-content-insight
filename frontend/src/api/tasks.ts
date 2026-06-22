@@ -22,8 +22,19 @@ export async function createTask(
   keyword: string,
   max_notes = 20,
   platform: PlatformKey = 'xhs',
-): Promise<{ task_id: number; platform: PlatformKey; status: string }> {
-  const { data } = await apiClient.post('/tasks', { keyword, max_notes, platform });
+  max_comments_per_note = 20,
+): Promise<{
+  task_id: number;
+  platform: PlatformKey;
+  max_comments_per_note: number;
+  status: string;
+}> {
+  const { data } = await apiClient.post('/tasks', {
+    keyword,
+    max_notes,
+    platform,
+    max_comments_per_note,
+  });
   return data;
 }
 

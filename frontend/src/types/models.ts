@@ -19,6 +19,7 @@ export interface TaskListItem {
   platform?: PlatformKey;
   status: TaskStatus;
   note_count: number;
+  max_comments_per_note?: number;
   started_at: string | null;
   finished_at: string | null;
   created_at: string;
@@ -58,6 +59,7 @@ export interface Task {
   status: TaskStatus;
   note_count: number;
   max_notes: number;
+  max_comments_per_note: number;
   started_at: string | null;
   finished_at: string | null;
   error_msg: string | null;
@@ -108,6 +110,7 @@ export interface Note {
   type: NoteType | null;
   cover_url: string | null;
   video_url: string | null;
+  source_url: string | null;
   liked_count: number;
   collected_count: number;
   comment_count: number;

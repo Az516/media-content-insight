@@ -50,9 +50,9 @@ function CommentRow({ comment }: { comment: Comment }): JSX.Element {
         {isHot && (
           <span
             data-testid="hot-badge"
-            className="inline-flex items-center rounded-full bg-claret-500 px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider text-paper-50"
+            className="inline-flex items-center rounded-full bg-claret-500 px-2 py-0.5 font-mono text-[10px] text-paper-50"
           >
-            hot
+            热门
           </span>
         )}
       </div>

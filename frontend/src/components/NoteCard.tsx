@@ -91,7 +91,7 @@ export function NoteCard({ note, onClick }: NoteCardProps): JSX.Element {
         )}
         {note.type === 'video' && (
           <span className="absolute left-2.5 top-2.5 inline-flex items-center gap-1 rounded-full bg-ink-900/85 px-2 py-0.5 text-[10px] font-medium text-paper-50 backdrop-blur">
-            ▶ video
+            ▶ 视频
           </span>
         )}
       </div>
@@ -118,7 +118,7 @@ export function NoteCard({ note, onClick }: NoteCardProps): JSX.Element {
         </div>
         {note.author?.nickname && (
           <div className="truncate border-t border-rule pt-2 text-[11px] text-ink-400">
-            by {note.author.nickname}
+            作者 {note.author.nickname}
           </div>
         )}
       </div>
